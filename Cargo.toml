@@ -1,0 +1,31 @@
+[package]
+name = "mount-identity-audit"
+version = "0.1.0"
+edition = "2024"
+description = "Read-only Dev Container and rootless Podman bind-mount identity preflight"
+license = "MIT"
+repository = "https://github.com/B-Divyesh/sf-devcontainer-identity-audit"
+readme = "README.md"
+keywords = ["devcontainer", "podman", "docker", "permissions", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = ["site/", "tests/fixtures/", ".factory/", "dist/", "graphify-out/"]
+
+[[bin]]
+name = "mount-identity-audit"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+json5 = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

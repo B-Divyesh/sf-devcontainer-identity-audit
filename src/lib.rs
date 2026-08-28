@@ -1,0 +1,615 @@
+//! Mount Identity Audit core library.
+//!
+//! The library is intentionally small: [`audit`] accepts explicit options and
+//! returns a serializable [`AuditReport`] without mutating the project or host.
+
+mod config;
+mod runtime;
+
+use serde::Serialize;
+use std::fs;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+
+pub use runtime::RuntimeChoice;
+
+#[derive(Debug, Clone)]
+pub struct AuditOptions {
+    pub project: PathBuf,
+    pub config: Option<PathBuf>,
+    pub workspace: Option<PathBuf>,
+    pub remote_user: Option<String>,
+    pub runtime: RuntimeChoice,
+    pub runtime_bin: Option<PathBuf>,
+    pub no_runtime: bool,
+    pub share: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Verdict {
+    Pass,
+    Fail,
+    Unknown,
+}
+
+impl Verdict {
+    pub fn exit_code(self) -> i32 {
+        match self {
+            Self::Pass => 0,
+            Self::Fail => 1,
+            Self::Unknown => 2,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Pass => "PASS",
+            Self::Fail => "FAIL",
+            Self::Unknown => "UNKNOWN",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Check {
+    pub name: String,
+    pub expected: String,
+    pub observed: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IdentityReport {
+    pub container_uid: Option<u32>,
+    pub container_gid: Option<u32>,
+    pub host_uid: Option<u32>,
+    pub host_gid: Option<u32>,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WorkspaceReport {
+    pub path: String,
+    pub owner_uid: u32,
+    pub owner_gid: u32,
+    pub mode: String,
+    pub declared_read_only: bool,
+    pub readable: Option<bool>,
+    pub writable: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimeReport {
+    pub kind: String,
+    pub version: Option<String>,
+    pub rootless: Option<bool>,
+    pub inspected: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AuditReport {
+    pub schema_version: u8,
+    pub verdict: Verdict,
+    pub summary: String,
+    pub config_path: String,
+    pub runtime: RuntimeReport,
+    pub identity: IdentityReport,
+    pub workspace: Option<WorkspaceReport>,
+    pub checks: Vec<Check>,
+    pub remediations: Vec<String>,
+    pub caveats: Vec<String>,
+    pub guarantees: Vec<String>,
+}
+
+/// Audit one Dev Container project without creating or starting a container.
+pub fn audit(options: AuditOptions) -> AuditReport {
+    let mut checks = Vec::new();
+    let mut remediations = Vec::new();
+    let caveats = vec![
+        "POSIX ACLs, security labels, and remote filesystem policy are not evaluated.".to_string(),
+        "Runtime changes made while creating a container can alter the final identity.".to_string(),
+    ];
+    let guarantees = vec![
+        "No files were changed.".to_string(),
+        "No image was pulled and no container was created or started.".to_string(),
+    ];
+
+    let project = canonical_or_original(&options.project);
+    let loaded = match config::load(&project, options.config.as_deref()) {
+        Ok(value) => value,
+        Err(error) => {
+            return unknown_report(
+                options.share,
+                error,
+                "<not loaded>".into(),
+                checks,
+                remediations,
+                caveats,
+                guarantees,
+            );
+        }
+    };
+    let config_label = redact_path(&loaded.path, options.share, "<devcontainer-config>");
+
+    let workspace_path = options
+        .workspace
+        .clone()
+        .or_else(|| loaded.workspace.clone())
+        .unwrap_or_else(|| project.clone());
+    let workspace_path = canonical_or_original(&workspace_path);
+    let metadata = match fs::metadata(&workspace_path) {
+        Ok(value) if value.is_dir() => value,
+        Ok(_) => {
+            return unknown_report(
+                options.share,
+                format!(
+                    "Workspace path is not a directory: {}",
+                    workspace_path.display()
+                ),
+                config_label,
+                checks,
+                vec!["Pass --workspace with the host directory mounted as the workspace.".into()],
+                caveats,
+                guarantees,
+            );
+        }
+        Err(error) => {
+            return unknown_report(
+                options.share,
+                format!(
+                    "Cannot inspect workspace {}: {error}",
+                    workspace_path.display()
+                ),
+                config_label,
+                checks,
+                vec!["Pass --workspace with an existing, accessible host directory.".into()],
+                caveats,
+                guarantees,
+            );
+        }
+    };
+
+    let runtime_info = match runtime::inspect(
+        options.runtime,
+        options.runtime_bin.as_deref(),
+        options.no_runtime,
+    ) {
+        Ok(info) => info,
+        Err(error) => {
+            checks.push(Check {
+                name: "runtime".into(),
+                expected: "reachable read-only adapter".into(),
+                observed: error.clone(),
+                status: "unknown".into(),
+            });
+            return unknown_report(
+                options.share,
+                format!("Runtime identity mapping is unknown: {error}"),
+                config_label,
+                checks,
+                vec![
+                    "Start the selected runtime, choose --runtime docker|podman, or use --no-runtime with an explicit runtime.".into(),
+                    "Provide --remote-user UID:GID when the configured user is named.".into(),
+                ],
+                caveats,
+                guarantees,
+            );
+        }
+    };
+
+    let runtime_observed = match (&runtime_info.version, runtime_info.rootless) {
+        (Some(version), Some(true)) => format!("{} {version} (rootless)", runtime_info.kind),
+        (Some(version), _) => format!("{} {version}", runtime_info.kind),
+        (None, _) => format!("{} (not inspected)", runtime_info.kind),
+    };
+    checks.push(Check {
+        name: "runtime".into(),
+        expected: runtime_info.kind.clone(),
+        observed: runtime_observed,
+        status: if runtime_info.inspected {
+            "pass"
+        } else {
+            "warning"
+        }
+        .into(),
+    });
+
+    let raw_user = options
+        .remote_user
+        .clone()
+        .or_else(|| loaded.remote_user.clone());
+    let identity_source = if options.remote_user.is_some() {
+        "--remote-user".to_string()
+    } else {
+        loaded.remote_user_source.clone()
+    };
+
+    let resolved_user = match raw_user {
+        Some(raw) => match parse_numeric_user(&raw) {
+            Some(pair) => pair,
+            None => {
+                checks.push(Check {
+                    name: "remote user".into(),
+                    expected: "numeric UID:GID".into(),
+                    observed: format!("named user {raw:?}"),
+                    status: "unknown".into(),
+                });
+                remediations.push(format!(
+                    "Resolve {raw:?} inside the image and rerun with --remote-user UID:GID. The audit will not start a container to guess it."
+                ));
+                return unknown_report_with_runtime(
+                    options.share,
+                    "The intended remote user has no safely resolvable numeric identity.".into(),
+                    config_label,
+                    runtime_info,
+                    checks,
+                    remediations,
+                    caveats,
+                    guarantees,
+                );
+            }
+        },
+        None => {
+            let image_user = loaded.image.as_deref().and_then(|image| {
+                runtime::inspect_image_user(&runtime_info, options.runtime_bin.as_deref(), image)
+                    .ok()
+            });
+            match image_user.as_deref() {
+                Some("") | None if loaded.image.is_none() => (0, 0),
+                Some("") => (0, 0),
+                None => {
+                    checks.push(Check {
+                        name: "remote user".into(),
+                        expected: "numeric UID:GID".into(),
+                        observed: "image metadata unavailable".into(),
+                        status: "unknown".into(),
+                    });
+                    remediations.push(
+                        "Make the configured image available locally or rerun with --remote-user UID:GID. Images are never pulled automatically."
+                            .into(),
+                    );
+                    return unknown_report_with_runtime(
+                        options.share,
+                        "The configured image is unavailable or its user metadata could not be read."
+                            .into(),
+                        config_label,
+                        runtime_info,
+                        checks,
+                        remediations,
+                        caveats,
+                        guarantees,
+                    );
+                }
+                Some(raw) => match parse_numeric_user(raw) {
+                    Some(pair) => pair,
+                    None => {
+                        checks.push(Check {
+                            name: "remote user".into(),
+                            expected: "numeric UID:GID".into(),
+                            observed: format!("image user {raw:?}"),
+                            status: "unknown".into(),
+                        });
+                        remediations.push(format!(
+                            "Resolve image user {raw:?} and rerun with --remote-user UID:GID."
+                        ));
+                        return unknown_report_with_runtime(
+                            options.share,
+                            "The image declares a named user that metadata cannot map to a UID."
+                                .into(),
+                            config_label,
+                            runtime_info,
+                            checks,
+                            remediations,
+                            caveats,
+                            guarantees,
+                        );
+                    }
+                },
+            }
+        }
+    };
+
+    let (container_uid, container_gid) = resolved_user;
+    let mapped = match runtime::map_identity(
+        &runtime_info,
+        options.runtime_bin.as_deref(),
+        container_uid,
+        container_gid,
+        &loaded.run_args,
+    ) {
+        Ok(pair) => pair,
+        Err(error) => {
+            checks.push(Check {
+                name: "identity map".into(),
+                expected: format!("container {container_uid}:{container_gid} mapped to host"),
+                observed: error.clone(),
+                status: "unknown".into(),
+            });
+            remediations.push("For rootless Podman, use --userns=keep-id or ensure `podman unshare` can read the live UID/GID maps.".into());
+            return unknown_report_with_runtime(
+                options.share,
+                format!("The runtime identity map could not be proven: {error}"),
+                config_label,
+                runtime_info,
+                checks,
+                remediations,
+                caveats,
+                guarantees,
+            );
+        }
+    };
+    let (host_uid, host_gid) = mapped;
+    let mode = metadata.mode() & 0o7777;
+    let owner_uid = metadata.uid();
+    let owner_gid = metadata.gid();
+    let (readable, writable) = access_for(mode, owner_uid, owner_gid, host_uid, host_gid);
+    let writable = writable && !loaded.read_only;
+
+    checks.push(Check {
+        name: "remote user".into(),
+        expected: format!("container {container_uid}:{container_gid}"),
+        observed: format!("host {host_uid}:{host_gid} via {identity_source}"),
+        status: "pass".into(),
+    });
+    checks.push(Check {
+        name: "workspace".into(),
+        expected: "read + write + traverse".into(),
+        observed: format!(
+            "{} {:04o} {owner_uid}:{owner_gid}{}",
+            file_type_prefix(mode),
+            mode,
+            if loaded.read_only {
+                " (declared read-only)"
+            } else {
+                ""
+            }
+        ),
+        status: if readable && writable { "pass" } else { "fail" }.into(),
+    });
+
+    let verdict = if readable && writable {
+        Verdict::Pass
+    } else {
+        Verdict::Fail
+    };
+    let summary = if verdict == Verdict::Pass {
+        "The intended remote user can read and write this bind mount.".to_string()
+    } else if loaded.read_only {
+        "The workspace bind mount is declared read-only.".to_string()
+    } else if !readable {
+        "The mapped remote identity cannot read and traverse the workspace.".to_string()
+    } else {
+        "The mapped remote identity can read but cannot write the workspace.".to_string()
+    };
+
+    if verdict == Verdict::Fail {
+        if runtime_info.kind == "podman" && runtime_info.rootless == Some(true) {
+            remediations.push("Prefer `\"runArgs\": [\"--userns=keep-id\"]` so the calling developer keeps the same identity in rootless Podman.".into());
+        }
+        remediations.push(format!(
+            "Choose a remote UID:GID that maps to workspace owner {owner_uid}:{owner_gid}, then verify with --remote-user {owner_uid}:{owner_gid}."
+        ));
+        remediations.push("If team write access is intentional, change the project group/mode explicitly on the host; this tool never changes ownership or permissions.".into());
+    }
+
+    AuditReport {
+        schema_version: 1,
+        verdict,
+        summary,
+        config_path: config_label,
+        runtime: RuntimeReport::from(&runtime_info),
+        identity: IdentityReport {
+            container_uid: Some(container_uid),
+            container_gid: Some(container_gid),
+            host_uid: Some(host_uid),
+            host_gid: Some(host_gid),
+            source: identity_source,
+        },
+        workspace: Some(WorkspaceReport {
+            path: redact_path(&workspace_path, options.share, "<workspace>"),
+            owner_uid,
+            owner_gid,
+            mode: format!("{:04o}", mode),
+            declared_read_only: loaded.read_only,
+            readable: Some(readable),
+            writable: Some(writable),
+        }),
+        checks,
+        remediations,
+        caveats,
+        guarantees,
+    }
+}
+
+fn parse_numeric_user(raw: &str) -> Option<(u32, u32)> {
+    if raw == "root" {
+        return Some((0, 0));
+    }
+    let (uid, gid) = raw.split_once(':').unwrap_or((raw, raw));
+    Some((uid.parse().ok()?, gid.parse().ok()?))
+}
+
+fn access_for(mode: u32, owner_uid: u32, owner_gid: u32, uid: u32, gid: u32) -> (bool, bool) {
+    if uid == 0 {
+        return (true, true);
+    }
+    let bits = if uid == owner_uid {
+        (mode >> 6) & 0o7
+    } else if gid == owner_gid {
+        (mode >> 3) & 0o7
+    } else {
+        mode & 0o7
+    };
+    (bits & 0o5 == 0o5, bits & 0o3 == 0o3)
+}
+
+fn file_type_prefix(_mode: u32) -> &'static str {
+    "directory mode"
+}
+
+fn canonical_or_original(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn redact_path(path: &Path, share: bool, replacement: &str) -> String {
+    if share {
+        replacement.into()
+    } else {
+        path.display().to_string()
+    }
+}
+
+fn unknown_report(
+    share: bool,
+    mut summary: String,
+    config_path: String,
+    checks: Vec<Check>,
+    remediations: Vec<String>,
+    caveats: Vec<String>,
+    guarantees: Vec<String>,
+) -> AuditReport {
+    if share {
+        summary = redact_text_paths(&summary);
+    }
+    AuditReport {
+        schema_version: 1,
+        verdict: Verdict::Unknown,
+        summary,
+        config_path,
+        runtime: RuntimeReport {
+            kind: "unknown".into(),
+            version: None,
+            rootless: None,
+            inspected: false,
+        },
+        identity: IdentityReport {
+            container_uid: None,
+            container_gid: None,
+            host_uid: None,
+            host_gid: None,
+            source: "unresolved".into(),
+        },
+        workspace: None,
+        checks,
+        remediations,
+        caveats,
+        guarantees,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn unknown_report_with_runtime(
+    share: bool,
+    summary: String,
+    config_path: String,
+    runtime: runtime::RuntimeInfo,
+    checks: Vec<Check>,
+    remediations: Vec<String>,
+    caveats: Vec<String>,
+    guarantees: Vec<String>,
+) -> AuditReport {
+    let mut report = unknown_report(
+        share,
+        summary,
+        config_path,
+        checks,
+        remediations,
+        caveats,
+        guarantees,
+    );
+    report.runtime = RuntimeReport::from(&runtime);
+    report
+}
+
+fn redact_text_paths(value: &str) -> String {
+    value
+        .split_whitespace()
+        .map(|word| {
+            if word.starts_with('/') {
+                "<local-path>"
+            } else {
+                word
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+impl From<&runtime::RuntimeInfo> for RuntimeReport {
+    fn from(value: &runtime::RuntimeInfo) -> Self {
+        Self {
+            kind: value.kind.clone(),
+            version: value.version.clone(),
+            rootless: value.rootless,
+            inspected: value.inspected,
+        }
+    }
+}
+
+pub fn render_text(report: &AuditReport, quiet: bool) -> String {
+    if quiet {
+        return format!("{}: {}\n", report.verdict.label(), report.summary);
+    }
+    let mut out = format!("MOUNT IDENTITY AUDIT{:>28}\n\n", report.verdict.label());
+    out.push_str(&format!(
+        "{:<15}{:<28}{:<34}{}\n",
+        "CHECK", "EXPECTED", "OBSERVED", "STATUS"
+    ));
+    for check in &report.checks {
+        out.push_str(&format!(
+            "{:<15}{:<28}{:<34}{}\n",
+            truncate(&check.name, 14),
+            truncate(&check.expected, 27),
+            truncate(&check.observed, 33),
+            check.status.to_uppercase()
+        ));
+    }
+    out.push_str(&format!("\n{}\n", report.summary));
+    if !report.remediations.is_empty() {
+        out.push_str("\nSAFE NEXT STEPS\n");
+        for (index, item) in report.remediations.iter().enumerate() {
+            out.push_str(&format!("{}. {item}\n", index + 1));
+        }
+    }
+    out.push_str("\nLIMITS\n");
+    for item in &report.caveats {
+        out.push_str(&format!("- {item}\n"));
+    }
+    out.push('\n');
+    for item in &report.guarantees {
+        out.push_str(&format!("{item} "));
+    }
+    out.push('\n');
+    out
+}
+
+fn truncate(value: &str, width: usize) -> String {
+    if value.chars().count() <= width {
+        return value.into();
+    }
+    value
+        .chars()
+        .take(width.saturating_sub(1))
+        .collect::<String>()
+        + "…"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_numeric_identity() {
+        assert_eq!(parse_numeric_user("1000:1001"), Some((1000, 1001)));
+        assert_eq!(parse_numeric_user("42"), Some((42, 42)));
+        assert_eq!(parse_numeric_user("vscode"), None);
+    }
+
+    #[test]
+    fn computes_directory_permissions() {
+        assert_eq!(access_for(0o775, 1000, 100, 2000, 100), (true, true));
+        assert_eq!(access_for(0o755, 1000, 100, 2000, 200), (true, false));
+        assert_eq!(access_for(0o700, 1000, 100, 2000, 100), (false, false));
+    }
+}

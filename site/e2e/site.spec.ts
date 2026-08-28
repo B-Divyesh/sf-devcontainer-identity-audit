@@ -30,6 +30,17 @@ test("announces validation errors", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("octal digits");
 });
 
+test("rejects a rootless mapping that exceeds the Linux ID range", async ({ page }) => {
+  await page.goto("/#demo");
+  for (const label of ["Owner UID", "Owner GID", "Remote UID", "Remote GID"]) {
+    await page.getByLabel(label).fill("4294967295");
+  }
+  await page.getByLabel("Directory mode").fill("0777");
+  await page.getByRole("button", { name: "Run preflight" }).click();
+  await expect(page.getByRole("alert")).toContainText("Mapped UID is outside the Linux ID range");
+  await expect(page.locator("#status-stamp")).toHaveText("Ready");
+});
+
 test("has no serious or critical accessibility violations", async ({ page }) => {
   await page.goto("/");
   const results = await new AxeBuilder({ page }).analyze();
@@ -91,6 +102,20 @@ test("supports the primary flow with only the keyboard", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Load safe example" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("#status-stamp")).toHaveText("pass");
+});
+
+test("keeps the skip link hidden until focus with reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const skip = page.getByRole("link", { name: "Skip to main content" });
+  const beforeFocus = await skip.boundingBox();
+  expect(beforeFocus).not.toBeNull();
+  expect(beforeFocus!.y + beforeFocus!.height).toBeLessThanOrEqual(0);
+  await page.keyboard.press("Tab");
+  await expect(skip).toBeFocused();
+  const afterFocus = await skip.boundingBox();
+  expect(afterFocus).not.toBeNull();
+  expect(afterFocus!.y).toBeGreaterThanOrEqual(0);
 });
 
 test("keeps demo data local and stores no user values", async ({ page, context }) => {

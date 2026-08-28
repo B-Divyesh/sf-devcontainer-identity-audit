@@ -45,6 +45,86 @@ fn reports_definite_permission_failure() {
     assert!(String::from_utf8_lossy(&output.stdout).starts_with("FAIL:"));
 }
 
+fn assert_uid_only_is_unknown(config: &str, extra_args: &[&str], runtime_user: Option<&str>) {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(temp.path().join(".devcontainer/devcontainer.json"), config).unwrap();
+    if config.contains("dockerComposeFile") {
+        fs::write(
+            temp.path().join(".devcontainer/compose.yml"),
+            "services:\n  app:\n    user: \"1000\"\n",
+        )
+        .unwrap();
+    }
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o770)).unwrap();
+
+    let current_uid = Command::new("id").arg("-u").output().unwrap().stdout;
+    if String::from_utf8(current_uid).unwrap().trim() == "0" {
+        let chown = Command::new("chown")
+            .arg("0:1000")
+            .arg(temp.path())
+            .status()
+            .unwrap();
+        assert!(chown.success());
+    }
+
+    let runtime = temp.path().join("docker-fixture");
+    fs::write(
+        &runtime,
+        format!(
+            "#!/bin/sh\ncase \"$1\" in\n  info) printf '%s\\n' '{{\"ServerVersion\":\"27.3.1\",\"SecurityOptions\":[]}}' ;;\n  image) printf '%s\\n' '{:?}' ;;\n  *) exit 8 ;;\nesac\n",
+            runtime_user.unwrap_or("")
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&runtime, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--runtime-bin"])
+        .arg(&runtime)
+        .args(extra_args)
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["identity"]["container_uid"], serde_json::Value::Null);
+    assert!(json["summary"].as_str().unwrap().contains("identity"));
+    assert!(json["remediations"].to_string().contains("UID:GID"));
+    assert!(json["remediations"].to_string().contains("invent"));
+}
+
+#[test]
+fn uid_only_devcontainer_user_never_uses_an_invented_gid() {
+    assert_uid_only_is_unknown(r#"{ remoteUser: "1000" }"#, &[], None);
+}
+
+#[test]
+fn uid_only_cli_override_never_uses_an_invented_gid() {
+    assert_uid_only_is_unknown(
+        r#"{ remoteUser: "2000:2000" }"#,
+        &["--remote-user", "1000"],
+        None,
+    );
+}
+
+#[test]
+fn uid_only_compose_user_never_uses_an_invented_gid() {
+    assert_uid_only_is_unknown(
+        r#"{ dockerComposeFile: "compose.yml", service: "app" }"#,
+        &[],
+        None,
+    );
+}
+
+#[test]
+fn uid_only_image_user_never_uses_an_invented_gid() {
+    assert_uid_only_is_unknown(r#"{ image: "local/uid-only:latest" }"#, &[], Some("1000"));
+}
+
 #[test]
 fn share_json_redacts_paths() {
     let temp = tempfile::tempdir().unwrap();
@@ -110,6 +190,61 @@ esac
     assert_eq!(json["verdict"], "unknown");
     assert_eq!(json["identity"]["container_uid"], serde_json::Value::Null);
     assert!(json["summary"].as_str().unwrap().contains("build"));
+}
+
+#[test]
+fn compose_build_with_image_does_not_trust_a_stale_local_tag() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        r#"{ dockerComposeFile: "compose.yml", service: "app", workspaceFolder: "/work" }"#,
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/compose.yml"),
+        "services:\n  app:\n    build: .\n    image: local/audit-stale:latest\n    volumes:\n      - ../:/work\n",
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/Dockerfile"),
+        "FROM ubuntu:24.04\nUSER 424242:424242\n",
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o755)).unwrap();
+
+    let runtime = temp.path().join("docker-fixture");
+    fs::write(
+        &runtime,
+        r#"#!/bin/sh
+case "$1" in
+  info) printf '%s\n' '{"ServerVersion":"27.3.1","SecurityOptions":[]}' ;;
+  image) printf '%s\n' '""' ;;
+  *) exit 8 ;;
+esac
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(&runtime, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--runtime-bin"])
+        .arg(&runtime)
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["identity"]["container_uid"], serde_json::Value::Null);
+    assert!(
+        json["summary"]
+            .as_str()
+            .unwrap()
+            .contains("Compose service app build")
+    );
 }
 
 #[test]

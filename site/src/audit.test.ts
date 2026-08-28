@@ -35,4 +35,17 @@ describe("browser audit model", () => {
   it("rejects invalid octal modes", () => {
     expect(() => evaluateAudit({ ...base, mode: "0899" })).toThrow(AuditInputError);
   });
+
+  it("rejects rootless mappings that overflow the Linux ID range", () => {
+    expect(() => evaluateAudit({
+      ...base,
+      ownerUid: "4294967295",
+      ownerGid: "4294967295",
+      remoteUid: "4294967295",
+      remoteGid: "4294967295",
+      mode: "0777",
+      runtime: "podman",
+      userns: "default"
+    })).toThrow(/Mapped UID is outside the Linux ID range/);
+  });
 });

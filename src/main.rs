@@ -22,7 +22,7 @@ struct Cli {
     #[arg(long, value_name = "PATH")]
     workspace: Option<PathBuf>,
 
-    /// Numeric intended container identity (UID or UID:GID)
+    /// Numeric intended container identity (UID:GID)
     #[arg(long, value_name = "UID:GID")]
     remote_user: Option<String>,
 

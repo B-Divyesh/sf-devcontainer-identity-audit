@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Return `UNKNOWN` for UID-only users from config, CLI overrides, Compose, or
+  image metadata instead of inventing a same-number primary GID.
+- Do not trust a possibly stale Compose `image` tag when the service is backed
+  by current `build` inputs and no explicit numeric user is available.
+- Reject browser-demo rootless mappings that overflow Linux IDs, and keep the
+  skip link hidden before focus when reduced motion is requested.
 - Return `UNKNOWN` instead of assuming root when build-backed configuration has
   no safely resolvable numeric user.
 - Redact configured paths from every string field in share-safe error reports.

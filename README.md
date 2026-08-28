@@ -107,14 +107,15 @@ and, for rootless Podman, `unshare … /proc/self/{uid,gid}_map`.
   `--userns host` intent;
 - host owner/group/mode and read-only mount declarations.
 
-Named image users cannot always be converted to a number without running a
-container. In that case the audit returns `UNKNOWN` and tells you to provide
-`--remote-user`; it does not guess. POSIX ACLs, SELinux/AppArmor labels, remote
-filesystems, and runtime mutations performed during container creation remain
-outside the v1 permission model and are called out in every detailed report.
-Build-backed configurations without an explicit numeric user also return
-`UNKNOWN`: the CLI never builds the image or assumes its Dockerfile user is
-root.
+Named image users and UID-only values do not prove a primary GID without
+running a container. In either case the audit returns `UNKNOWN` and tells you
+to provide `--remote-user UID:GID`; it never invents a same-number group. POSIX
+ACLs, SELinux/AppArmor labels, remote filesystems, and runtime mutations
+performed during container creation remain outside the v1 permission model and
+are called out in every detailed report. Build-backed configurations without an
+explicit numeric user also return `UNKNOWN`, even when Compose also declares an
+`image` tag: the CLI never builds an image, assumes its Dockerfile user is root,
+or trusts a possibly stale tag as evidence of current build inputs.
 
 ## Develop, test, and build
 

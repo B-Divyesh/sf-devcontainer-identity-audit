@@ -31,6 +31,13 @@ const numericId = (value: string, label: string): number => {
   return parsed;
 };
 
+const mappedId = (value: number, label: string): number => {
+  if (!Number.isSafeInteger(value) || value > 4_294_967_295) {
+    throw new AuditInputError(`${label} is outside the Linux ID range.`);
+  }
+  return value;
+};
+
 const octalMode = (value: string): number => {
   if (!/^[0-7]{3,4}$/.test(value.trim())) throw new AuditInputError("Directory mode must be three or four octal digits, such as 0755.");
   return Number.parseInt(value, 8) & 0o777;
@@ -47,8 +54,8 @@ export function evaluateAudit(input: AuditInput): DemoAuditResult {
   let mappedGid = remoteGid;
   let mapping = "direct mapping";
   if (input.runtime === "podman" && input.userns === "default") {
-    mappedUid = remoteUid === 0 ? ownerUid : 100_000 + remoteUid - 1;
-    mappedGid = remoteGid === 0 ? ownerGid : 100_000 + remoteGid - 1;
+    mappedUid = mappedId(remoteUid === 0 ? ownerUid : 100_000 + remoteUid - 1, "Mapped UID");
+    mappedGid = mappedId(remoteGid === 0 ? ownerGid : 100_000 + remoteGid - 1, "Mapped GID");
     mapping = "rootless subuid map";
   } else if (input.runtime === "podman" && input.userns === "keep-id") {
     mappedUid = ownerUid;

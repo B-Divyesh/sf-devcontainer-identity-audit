@@ -241,20 +241,34 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
 
     let resolved_user = match raw_user {
         Some(raw) => match parse_numeric_user(&raw) {
-            Some(pair) => pair,
-            None => {
+            Ok(pair) => pair,
+            Err(error) => {
+                let (observed, summary, remediation) = match error {
+                    NumericUserError::MissingGid => (
+                        format!("UID-only user {raw:?}; primary GID is unproven"),
+                        "The intended remote user does not include a GID, so its numeric identity cannot be proven.",
+                        format!(
+                            "Resolve UID {raw}'s primary group inside the image and rerun with --remote-user UID:GID. The audit will not invent a same-number GID."
+                        ),
+                    ),
+                    NumericUserError::NotNumeric => (
+                        format!("named or invalid user {raw:?}"),
+                        "The intended remote user has no safely resolvable numeric identity.",
+                        format!(
+                            "Resolve {raw:?} inside the image and rerun with --remote-user UID:GID. The audit will not start a container to guess it."
+                        ),
+                    ),
+                };
                 checks.push(Check {
                     name: "remote user".into(),
                     expected: "numeric UID:GID".into(),
-                    observed: format!("named user {raw:?}"),
+                    observed,
                     status: "unknown".into(),
                 });
-                remediations.push(format!(
-                    "Resolve {raw:?} inside the image and rerun with --remote-user UID:GID. The audit will not start a container to guess it."
-                ));
+                remediations.push(remediation);
                 return unknown_report_with_runtime(
                     options.share,
-                    "The intended remote user has no safely resolvable numeric identity.".into(),
+                    summary.into(),
                     config_label,
                     runtime_info,
                     checks,
@@ -265,19 +279,15 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
             }
         },
         None => {
-            let Some(image) = loaded.image.as_deref() else {
-                let build_detail = loaded
-                    .build_source
-                    .as_deref()
-                    .unwrap_or("configuration without an image");
+            if let Some(build_detail) = loaded.build_source.as_deref() {
                 checks.push(Check {
                     name: "remote user".into(),
-                    expected: "numeric UID:GID".into(),
+                    expected: "numeric UID:GID tied to current build inputs".into(),
                     observed: format!("unresolved {build_detail}"),
                     status: "unknown".into(),
                 });
                 remediations.push(
-                    "Resolve the build's effective user and rerun with --remote-user UID:GID. The audit will not build an image or assume root."
+                    "Resolve the current build's effective user and rerun with --remote-user UID:GID. A local image tag may be stale, so the audit will not inspect it as build evidence."
                         .into(),
                 );
                 return unknown_report_with_runtime(
@@ -285,6 +295,29 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
                     format!(
                         "The {build_detail} does not provide a safely resolvable numeric identity."
                     ),
+                    config_label,
+                    runtime_info,
+                    checks,
+                    remediations,
+                    caveats,
+                    guarantees,
+                );
+            }
+            let Some(image) = loaded.image.as_deref() else {
+                checks.push(Check {
+                    name: "remote user".into(),
+                    expected: "numeric UID:GID".into(),
+                    observed: "unresolved configuration without an image".into(),
+                    status: "unknown".into(),
+                });
+                remediations.push(
+                    "Provide a configured image or rerun with --remote-user UID:GID. The audit will not assume root."
+                        .into(),
+                );
+                return unknown_report_with_runtime(
+                    options.share,
+                    "The configuration does not provide a safely resolvable numeric identity."
+                        .into(),
                     config_label,
                     runtime_info,
                     checks,
@@ -322,21 +355,34 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
                     );
                 }
                 Some(raw) => match parse_numeric_user(raw) {
-                    Some(pair) => pair,
-                    None => {
+                    Ok(pair) => pair,
+                    Err(error) => {
+                        let (observed, summary, remediation) = match error {
+                            NumericUserError::MissingGid => (
+                                format!("image UID {raw:?}; primary GID is unproven"),
+                                "The image declares a UID without a primary GID, so its numeric identity cannot be proven.",
+                                format!(
+                                    "Resolve image UID {raw}'s primary group and rerun with --remote-user UID:GID. The audit will not invent a same-number GID."
+                                ),
+                            ),
+                            NumericUserError::NotNumeric => (
+                                format!("image user {raw:?}"),
+                                "The image declares a named user that metadata cannot map to a UID and GID.",
+                                format!(
+                                    "Resolve image user {raw:?} and rerun with --remote-user UID:GID."
+                                ),
+                            ),
+                        };
                         checks.push(Check {
                             name: "remote user".into(),
                             expected: "numeric UID:GID".into(),
-                            observed: format!("image user {raw:?}"),
+                            observed,
                             status: "unknown".into(),
                         });
-                        remediations.push(format!(
-                            "Resolve image user {raw:?} and rerun with --remote-user UID:GID."
-                        ));
+                        remediations.push(remediation);
                         return unknown_report_with_runtime(
                             options.share,
-                            "The image declares a named user that metadata cannot map to a UID."
-                                .into(),
+                            summary.into(),
                             config_label,
                             runtime_info,
                             checks,
@@ -462,12 +508,27 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
     }
 }
 
-fn parse_numeric_user(raw: &str) -> Option<(u32, u32)> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NumericUserError {
+    MissingGid,
+    NotNumeric,
+}
+
+fn parse_numeric_user(raw: &str) -> Result<(u32, u32), NumericUserError> {
     if raw == "root" {
-        return Some((0, 0));
+        return Ok((0, 0));
     }
-    let (uid, gid) = raw.split_once(':').unwrap_or((raw, raw));
-    Some((uid.parse().ok()?, gid.parse().ok()?))
+    let Some((uid, gid)) = raw.split_once(':') else {
+        return Err(if raw.parse::<u32>().is_ok() {
+            NumericUserError::MissingGid
+        } else {
+            NumericUserError::NotNumeric
+        });
+    };
+    Ok((
+        uid.parse().map_err(|_| NumericUserError::NotNumeric)?,
+        gid.parse().map_err(|_| NumericUserError::NotNumeric)?,
+    ))
 }
 
 fn access_for(mode: u32, owner_uid: u32, owner_gid: u32, uid: u32, gid: u32) -> (bool, bool) {
@@ -723,9 +784,13 @@ mod tests {
 
     #[test]
     fn parses_numeric_identity() {
-        assert_eq!(parse_numeric_user("1000:1001"), Some((1000, 1001)));
-        assert_eq!(parse_numeric_user("42"), Some((42, 42)));
-        assert_eq!(parse_numeric_user("vscode"), None);
+        assert_eq!(parse_numeric_user("1000:1001"), Ok((1000, 1001)));
+        assert_eq!(parse_numeric_user("42"), Err(NumericUserError::MissingGid));
+        assert_eq!(parse_numeric_user("root"), Ok((0, 0)));
+        assert_eq!(
+            parse_numeric_user("vscode"),
+            Err(NumericUserError::NotNumeric)
+        );
     }
 
     #[test]

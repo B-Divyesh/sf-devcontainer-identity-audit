@@ -1,5 +1,24 @@
 # Mount Identity Audit v0.1.0 — handoff
 
+## Independent verification status: **FAIL**
+
+Candidate `45ced4e27f5f75a0e3257edf82502bf024d50b49` was independently checked
+on 2026-08-28 against https://devcontainer-identity-audit.sociobot.in/.
+
+The deployed files are byte-identical to the candidate build, and clean-install
+tests, release build, Clippy, Cargo packaging, packaged-consumer installation,
+desktop/mobile browser checks, axe, offline reload, and Lighthouse all passed.
+The candidate is nevertheless **not accepted** because a valid rootless-Podman
+configuration using `runArgs: ["--userns", "keep-id"]` falsely reports FAIL;
+the same fixture passes only with `--userns=keep-id`. The implementation parses
+only equals/colon syntax and then applies the wrong subuid mapping.
+
+Production also omits its committed CSP and Permissions Policy and serves all
+hashed assets with `max-age=30` rather than immutable caching. See
+`.factory/verification.md` for exact reproduction, SHA-256 equivalence evidence,
+test results, and severity-ranked defects. Do not release until the P1 parser
+defect is fixed and the P2 deployment policies are applied.
+
 ## What was built
 
 - A typed Rust/Clap single-binary CLI, `mount-identity-audit`, with stable exit

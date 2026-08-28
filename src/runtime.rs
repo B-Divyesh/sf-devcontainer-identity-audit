@@ -161,10 +161,7 @@ pub fn map_identity(
         return Ok((uid, gid));
     }
 
-    let userns = run_args.iter().find_map(|arg| {
-        arg.strip_prefix("--userns=")
-            .or_else(|| arg.strip_prefix("--userns:"))
-    });
+    let userns = userns_value(run_args);
     if userns.is_some_and(|value| value == "host") {
         return Ok((uid, gid));
     }
@@ -234,6 +231,23 @@ fn option_number(value: &str, key: &str) -> Option<u32> {
     })
 }
 
+/// Return the value supplied to Podman's `--userns` option in Dev Container
+/// `runArgs`. Both `--userns=value` and the normal option/value spelling are
+/// valid there.
+fn userns_value(run_args: &[String]) -> Option<&str> {
+    run_args.iter().enumerate().find_map(|(index, argument)| {
+        argument
+            .strip_prefix("--userns=")
+            .or_else(|| argument.strip_prefix("--userns:"))
+            .or_else(|| {
+                (argument == "--userns")
+                    .then(|| run_args.get(index + 1))
+                    .flatten()
+                    .map(String::as_str)
+            })
+    })
+}
+
 fn run(executable: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new(executable)
         .args(args)
@@ -294,5 +308,14 @@ mod tests {
             option_number("keep-id:uid=1200,gid=1300", "gid"),
             Some(1300)
         );
+    }
+
+    #[test]
+    fn reads_split_userns_options() {
+        let keep_id = vec!["--userns".to_string(), "keep-id".to_string()];
+        let host = vec!["--userns".to_string(), "host".to_string()];
+
+        assert_eq!(userns_value(&keep_id), Some("keep-id"));
+        assert_eq!(userns_value(&host), Some("host"));
     }
 }

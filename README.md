@@ -102,8 +102,9 @@ and, for rootless Podman, `unshare … /proc/self/{uid,gid}_map`.
   `runArgs`, `dockerComposeFile`, and `service`;
 - Compose `services.<name>.user`, `image`, `volumes`, and `read_only`;
 - Docker’s direct Linux ID mapping;
-- rootful Podman and rootless Podman’s live UID/GID maps, including
-  `--userns=keep-id` and `--userns=host` intent;
+- rootful Podman and rootless Podman’s live UID/GID maps, including both
+  `--userns=keep-id` / `--userns=host` and split `--userns keep-id` /
+  `--userns host` intent;
 - host owner/group/mode and read-only mount declarations.
 
 Named image users cannot always be converted to a number without running a

@@ -119,3 +119,83 @@ esac
     assert_eq!(json["identity"]["host_uid"], 0);
     assert_eq!(json["verdict"], "pass");
 }
+
+#[test]
+fn rootless_podman_split_keep_id_preserves_the_host_identity() {
+    let temp = tempfile::tempdir().unwrap();
+    let current_uid = Command::new("id").arg("-u").output().unwrap().stdout;
+    let current_uid = String::from_utf8(current_uid)
+        .unwrap()
+        .trim()
+        .parse::<u32>()
+        .unwrap();
+    let current_gid = Command::new("id").arg("-g").output().unwrap().stdout;
+    let current_gid = String::from_utf8(current_gid)
+        .unwrap()
+        .trim()
+        .parse::<u32>()
+        .unwrap();
+
+    // The verifier reproduced this as nobody. Keep that exact non-zero
+    // identity when tests run as root; otherwise use the test user's identity.
+    let (uid, gid) = if current_uid == 0 {
+        (65_534, 65_534)
+    } else {
+        (current_uid, current_gid)
+    };
+    if current_uid == 0 {
+        let status = Command::new("chown")
+            .arg(format!("{uid}:{gid}"))
+            .arg(temp.path())
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        format!("{{ remoteUser: \"{uid}:{gid}\", runArgs: [\"--userns\", \"keep-id\"] }}"),
+    )
+    .unwrap();
+    let runtime = temp.path().join("podman-fixture");
+    fs::write(
+        &runtime,
+        format!(
+            "#!/bin/sh\ncase \"$1\" in\n  info) printf '%s\\n' '{{\"version\":{{\"Version\":\"5.2.2\"}},\"host\":{{\"security\":{{\"rootless\":true}}}}}}' ;;\n  unshare)\n    case \"$3\" in\n      /proc/self/uid_map|/proc/self/gid_map) printf '%s\\n' '0 {uid} 1' '1 100000 65536' ;;\n      *) exit 9 ;;\n    esac ;;\n  *) exit 8 ;;\nesac\n"
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&runtime, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let mut command = Command::new(binary());
+    command
+        .arg(temp.path())
+        .args(["--runtime", "podman", "--runtime-bin"])
+        .arg(&runtime)
+        .arg("--json");
+    if current_uid == 0 {
+        let bin = temp.path().join("bin");
+        fs::create_dir(&bin).unwrap();
+        let fake_id = bin.join("id");
+        fs::write(
+            &fake_id,
+            format!(
+                "#!/bin/sh\ncase \"$1\" in\n  -u) echo {uid} ;;\n  -g) echo {gid} ;;\n  *) exit 2 ;;\nesac\n"
+            ),
+        )
+        .unwrap();
+        fs::set_permissions(&fake_id, fs::Permissions::from_mode(0o755)).unwrap();
+        command.env(
+            "PATH",
+            format!("{}:{}", bin.display(), std::env::var("PATH").unwrap()),
+        );
+    }
+    let output = command.output().unwrap();
+
+    assert_eq!(output.status.code(), Some(0));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["identity"]["host_uid"], uid);
+    assert_eq!(json["identity"]["host_gid"], gid);
+    assert_eq!(json["verdict"], "pass");
+}

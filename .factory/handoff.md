@@ -1,23 +1,25 @@
-# Mount Identity Audit v0.1.0 — handoff
+# Mount Identity Audit v0.1.0 — repair handoff
 
-## Independent verification status: **FAIL**
+## Independent-verifier repair status: **ready to deploy**
 
-Candidate `45ced4e27f5f75a0e3257edf82502bf024d50b49` was independently checked
-on 2026-08-28 against https://devcontainer-identity-audit.sociobot.in/.
+This repair addresses every finding in `.factory/verification.md` for candidate
+`45ced4e27f5f75a0e3257edf82502bf024d50b49`:
 
-The deployed files are byte-identical to the candidate build, and clean-install
-tests, release build, Clippy, Cargo packaging, packaged-consumer installation,
-desktop/mobile browser checks, axe, offline reload, and Lighthouse all passed.
-The candidate is nevertheless **not accepted** because a valid rootless-Podman
-configuration using `runArgs: ["--userns", "keep-id"]` falsely reports FAIL;
-the same fixture passes only with `--userns=keep-id`. The implementation parses
-only equals/colon syntax and then applies the wrong subuid mapping.
+- Rootless Podman now recognizes both `runArgs: ["--userns", "keep-id"]` and
+  `runArgs: ["--userns", "host"]`, alongside the existing equals/colon forms.
+  The exact integration regression simulates the verifier's non-zero identity,
+  rootless map, and split `keep-id` form; it returns that host identity and
+  `PASS` rather than a subuid-mapped false `FAIL`.
+- `site/public/staticwebapp.config.json` is the Azure Static Web Apps-native
+  deployment configuration. It emits CSP and Permissions Policy on every
+  response, sets HSTS to `max-age=31536000; includeSubDomains; preload`, and
+  gives `/assets/*` and the immutable hero a one-year immutable cache policy.
+  Vitest regression coverage asserts each policy value, preventing the static
+  deploy helper's fallback configuration from silently replacing it.
 
-Production also omits its committed CSP and Permissions Policy and serves all
-hashed assets with `max-age=30` rather than immutable caching. See
-`.factory/verification.md` for exact reproduction, SHA-256 equivalence evidence,
-test results, and severity-ranked defects. Do not release until the P1 parser
-defect is fixed and the P2 deployment policies are applied.
+The original CLI contract, documentation site, privacy posture, visual system,
+and passing behavior are unchanged. Post-deploy response-header evidence is
+recorded below after the static deployment completes.
 
 ## What was built
 
@@ -62,8 +64,10 @@ Outputs:
 
 Verification completed on 2026-08-28:
 
-- `npm test`: 11 Rust tests, 5 browser-model tests, and 11 applicable Playwright
-  tests passed (the desktop run intentionally skips one mobile-only assertion).
+- Clean install: `npm ci` completed with **0 vulnerabilities**. `npm test`
+  passed 7 Rust unit tests, 6 Rust CLI integration tests (including the exact
+  split-`--userns keep-id` regression), 7 Vitest tests, and 11 applicable
+  Playwright tests (one desktop-only skip is intentional).
 - Playwright ran desktop and 390×844 Chromium, full axe scans, error/empty/offline
   flows, legal routes, interaction flow, overflow checks, and console capture.
   Serious/critical axe violations: 0. Browser console errors: 0.
@@ -78,8 +82,12 @@ Verification completed on 2026-08-28:
   3.30 KB gzip; eager hero WebP 216,498 bytes. All are within budget.
 - `npm audit`: 0 vulnerabilities.
 - `cargo clippy --all-targets --all-features -- -D warnings`: passed.
-- `cargo package`: 17 files, 122.8 KiB raw / 32.4 KiB compressed, verification
-  build passed. The worker did not publish it.
+- `npm run build`: passed and produced `target/release/mount-identity-audit`
+  plus `dist/site/`; `dist/site/staticwebapp.config.json` is present.
+- `cargo package --allow-dirty`: 17 files, 126.7 KiB raw / 33.3 KiB compressed;
+  Cargo's package verification build passed. A fresh unpacked consumer installed
+  the crate, ran `--help` and `--version` (`0.1.0`), and returned JSON `PASS`
+  for the documented Docker `--no-runtime` case. The worker did not publish it.
 
 ## Known v1 gaps
 

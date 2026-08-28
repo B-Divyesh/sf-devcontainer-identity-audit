@@ -74,8 +74,8 @@ Toolchain: Rust/Cargo 1.98.0, Node 22.23.2, npm 10.9.8, Playwright 1.58.2.
   `dist/site/`.
 - Production payloads: JS 4,753 B raw / 2.11 KiB gzip; CSS 11,960 B raw /
   3.37 KiB gzip; no fonts; hero WebP 216,498 B. All budgets pass.
-- `cargo package`: passed verification with 17 files, 135.7 KiB unpacked /
-  34.8 KiB compressed. A clean install from the packed crate returned version
+- `cargo package`: passed verification with 17 files, 135.8 KiB unpacked /
+  34.9 KiB compressed. A clean install from the packed crate returned version
   `0.1.0`, rendered complete help, and passed an external public-library API
   consumer. The crate was not published; factory registry credentials remain
   outside this worker.

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Mount Identity Audit mark">
+  <rect width="64" height="64" fill="#f3ebdd"/>
+  <rect x="7" y="7" width="50" height="50" fill="#e6c84f" stroke="#171a17" stroke-width="4"/>
+  <path d="M18 40V24l8 10 8-10v16M39 25h9m-4-4 4 4-4 4M48 39h-9m4-4-4 4 4 4" fill="none" stroke="#17624a" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

@@ -1,0 +1,24 @@
+{
+  "name": "devcontainer-identity-audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config site/vite.config.ts",
+    "build": "npm run build:cli && npm run build:site",
+    "build:cli": "cargo build --release",
+    "build:site": "vite build --config site/vite.config.ts",
+    "preview": "vite preview --config site/vite.config.ts",
+    "test": "npm run test:cli && npm run test:site && npm run build:site && npm run test:e2e",
+    "test:cli": "cargo test",
+    "test:site": "vitest run --config site/vitest.config.ts",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.58.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  }
+}

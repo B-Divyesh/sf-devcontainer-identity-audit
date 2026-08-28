@@ -1,6 +1,6 @@
 # Mount Identity Audit v0.1.0 — repair handoff
 
-## Independent-verifier repair status: **ready to deploy**
+## Independent-verifier repair status: **PASS — deployed**
 
 This repair addresses every finding in `.factory/verification.md` for candidate
 `45ced4e27f5f75a0e3257edf82502bf024d50b49`:
@@ -18,8 +18,10 @@ This repair addresses every finding in `.factory/verification.md` for candidate
   deploy helper's fallback configuration from silently replacing it.
 
 The original CLI contract, documentation site, privacy posture, visual system,
-and passing behavior are unchanged. Post-deploy response-header evidence is
-recorded below after the static deployment completes.
+and passing behavior are unchanged. Commit `d10cab3` was pushed to `main` and
+deployed with `/opt/fleet/lib/deploy-static.sh devcontainer-identity-audit
+dist/site` (Azure Static Web Apps deployment
+`760b00b5-653b-4cc7-b4c2-e3e5d5ed23eb`).
 
 ## What was built
 
@@ -88,6 +90,20 @@ Verification completed on 2026-08-28:
   Cargo's package verification build passed. A fresh unpacked consumer installed
   the crate, ran `--help` and `--version` (`0.1.0`), and returned JSON `PASS`
   for the documented Docker `--no-runtime` case. The worker did not publish it.
+- Live response policy (root, `/privacy/`, JS, and hero checked): CSP and
+  `Permissions-Policy: camera=(), microphone=(), geolocation=()` are present;
+  HSTS is `max-age=31536000; includeSubDomains; preload`; hashed JS and the
+  hero return `Cache-Control: public, max-age=31536000, immutable`.
+- `/opt/fleet/lib/verify-url.sh` passed against the custom domain: HTTP 200,
+  correct title/`lang`, one `h1`, `main`, image alt text, labelled controls,
+  and no console errors. Live Playwright desktop and 390×844 checks found no
+  overflow or console/page errors, no serious/critical axe issues, only the
+  first-party origin, a keyboard-reachable “Skip to main content” link, and
+  Enter-driven fail → safe-example pass. Service-worker `update()` retained an
+  active worker; the offline banner and an offline reload both worked.
+- Lighthouse 12.8.2 (mobile simulation, live URL): Performance **98**,
+  Accessibility **100**, Best Practices **100**, SEO **100**; FCP **1.2 s**,
+  LCP **2.2 s**, TBT **100 ms**, CLS **0**.
 
 ## Known v1 gaps
 

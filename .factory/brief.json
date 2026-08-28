@@ -1,0 +1,11 @@
+{
+  "slug": "devcontainer-identity-audit",
+  "title": "Mount Identity Audit",
+  "territory": "devtools-data",
+  "user": "Developers using Dev Containers or rootless Podman who need to know, before opening a project, whether the workspace bind mount will be readable and writable by the intended remote user.",
+  "smallest_useful_product": "A local CLI that reads devcontainer.json/Compose metadata, inspects the chosen runtime, and emits a pass/fail ownership table plus safe remediation options.",
+  "artifact_class": "cli",
+  "monetization": "free",
+  "constraints": "Read runtime metadata only by default; never change host file ownership; support Docker and rootless Podman separately; avoid exposing mounted path names in shared reports.",
+  "state": "RESEARCHED"
+}

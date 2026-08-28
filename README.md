@@ -114,7 +114,8 @@ outside the v1 permission model and are called out in every detailed report.
 
 ## Develop, test, and build
 
-Requirements: stable Rust, Node 20+, and npm.
+Requirements: a Linux host (or WSL2), stable Rust, Node 20+, and npm. Docker
+Desktop filesystem translation on native macOS/Windows is outside the v1 model.
 
 ```sh
 npm install

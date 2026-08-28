@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://devcontainer-identity-audit.sociobot.in/sitemap.xml

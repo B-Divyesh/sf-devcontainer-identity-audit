@@ -104,6 +104,20 @@ pub struct AuditReport {
 
 /// Audit one Dev Container project without creating or starting a container.
 pub fn audit(options: AuditOptions) -> AuditReport {
+    let share = options.share;
+    let redactions = if share {
+        report_path_redactions(&options)
+    } else {
+        Vec::new()
+    };
+    let mut report = audit_unredacted(options);
+    if share {
+        redact_report(&mut report, &redactions);
+    }
+    report
+}
+
+fn audit_unredacted(options: AuditOptions) -> AuditReport {
     let mut checks = Vec::new();
     let mut remediations = Vec::new();
     let caveats = vec![
@@ -251,12 +265,38 @@ pub fn audit(options: AuditOptions) -> AuditReport {
             }
         },
         None => {
-            let image_user = loaded.image.as_deref().and_then(|image| {
+            let Some(image) = loaded.image.as_deref() else {
+                let build_detail = loaded
+                    .build_source
+                    .as_deref()
+                    .unwrap_or("configuration without an image");
+                checks.push(Check {
+                    name: "remote user".into(),
+                    expected: "numeric UID:GID".into(),
+                    observed: format!("unresolved {build_detail}"),
+                    status: "unknown".into(),
+                });
+                remediations.push(
+                    "Resolve the build's effective user and rerun with --remote-user UID:GID. The audit will not build an image or assume root."
+                        .into(),
+                );
+                return unknown_report_with_runtime(
+                    options.share,
+                    format!(
+                        "The {build_detail} does not provide a safely resolvable numeric identity."
+                    ),
+                    config_label,
+                    runtime_info,
+                    checks,
+                    remediations,
+                    caveats,
+                    guarantees,
+                );
+            };
+            let image_user =
                 runtime::inspect_image_user(&runtime_info, options.runtime_bin.as_deref(), image)
-                    .ok()
-            });
+                    .ok();
             match image_user.as_deref() {
-                Some("") | None if loaded.image.is_none() => (0, 0),
                 Some("") => (0, 0),
                 None => {
                     checks.push(Check {
@@ -457,6 +497,88 @@ fn redact_path(path: &Path, share: bool, replacement: &str) -> String {
         replacement.into()
     } else {
         path.display().to_string()
+    }
+}
+
+fn report_path_redactions(options: &AuditOptions) -> Vec<(String, &'static str)> {
+    let mut redactions = Vec::new();
+    add_path_redactions(
+        &mut redactions,
+        options.config.as_deref(),
+        "<devcontainer-config>",
+    );
+    add_path_redactions(
+        &mut redactions,
+        options.runtime_bin.as_deref(),
+        "<runtime-bin>",
+    );
+    add_path_redactions(&mut redactions, options.workspace.as_deref(), "<workspace>");
+    add_path_redactions(&mut redactions, Some(&options.project), "<project>");
+    redactions.sort_by_key(|item| std::cmp::Reverse(item.0.len()));
+    redactions.dedup_by(|left, right| left.0 == right.0);
+    redactions
+}
+
+fn add_path_redactions(
+    redactions: &mut Vec<(String, &'static str)>,
+    path: Option<&Path>,
+    replacement: &'static str,
+) {
+    let Some(path) = path else { return };
+    let raw = path.display().to_string();
+    if is_safe_redaction_candidate(&raw) {
+        redactions.push((raw, replacement));
+    }
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|current| current.join(path))
+            .unwrap_or_else(|_| path.to_path_buf())
+    };
+    let absolute = canonical_or_original(&absolute).display().to_string();
+    if is_safe_redaction_candidate(&absolute) {
+        redactions.push((absolute, replacement));
+    }
+}
+
+fn is_safe_redaction_candidate(value: &str) -> bool {
+    !value.is_empty() && value != "." && value != "/"
+}
+
+fn redact_report(report: &mut AuditReport, redactions: &[(String, &'static str)]) {
+    redact_string(&mut report.summary, redactions);
+    redact_string(&mut report.config_path, redactions);
+    redact_string(&mut report.runtime.kind, redactions);
+    if let Some(version) = &mut report.runtime.version {
+        redact_string(version, redactions);
+    }
+    redact_string(&mut report.identity.source, redactions);
+    if let Some(workspace) = &mut report.workspace {
+        redact_string(&mut workspace.path, redactions);
+        redact_string(&mut workspace.mode, redactions);
+    }
+    for check in &mut report.checks {
+        redact_string(&mut check.name, redactions);
+        redact_string(&mut check.expected, redactions);
+        redact_string(&mut check.observed, redactions);
+        redact_string(&mut check.status, redactions);
+    }
+    for value in report
+        .remediations
+        .iter_mut()
+        .chain(report.caveats.iter_mut())
+        .chain(report.guarantees.iter_mut())
+    {
+        redact_string(value, redactions);
+    }
+}
+
+fn redact_string(value: &mut String, redactions: &[(String, &'static str)]) {
+    for (path, replacement) in redactions {
+        if value.contains(path) {
+            *value = value.replace(path, replacement);
+        }
     }
 }
 

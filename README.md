@@ -98,9 +98,9 @@ and, for rootless Podman, `unshare … /proc/self/{uid,gid}_map`.
 ## What it understands
 
 - JSON-with-comments Dev Container files;
-- `remoteUser`, `containerUser`, `image`, `workspaceFolder`, `workspaceMount`,
-  `runArgs`, `dockerComposeFile`, and `service`;
-- Compose `services.<name>.user`, `image`, `volumes`, and `read_only`;
+- `remoteUser`, `containerUser`, `image`, `build`, `workspaceFolder`,
+  `workspaceMount`, `runArgs`, `dockerComposeFile`, and `service`;
+- Compose `services.<name>.user`, `image`, `build`, `volumes`, and `read_only`;
 - Docker’s direct Linux ID mapping;
 - rootful Podman and rootless Podman’s live UID/GID maps, including both
   `--userns=keep-id` / `--userns=host` and split `--userns keep-id` /
@@ -112,6 +112,9 @@ container. In that case the audit returns `UNKNOWN` and tells you to provide
 `--remote-user`; it does not guess. POSIX ACLs, SELinux/AppArmor labels, remote
 filesystems, and runtime mutations performed during container creation remain
 outside the v1 permission model and are called out in every detailed report.
+Build-backed configurations without an explicit numeric user also return
+`UNKNOWN`: the CLI never builds the image or assumes its Dockerfile user is
+root.
 
 ## Develop, test, and build
 

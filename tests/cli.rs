@@ -66,6 +66,100 @@ fn share_json_redacts_paths() {
 }
 
 #[test]
+fn build_backed_config_without_a_resolved_user_is_unknown() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        r#"{
+            name: "Valid Dockerfile-backed Dev Container",
+            build: { dockerfile: "Dockerfile" }
+        }"#,
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/Dockerfile"),
+        "FROM ubuntu:24.04\nUSER 424242:424242\n",
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o755)).unwrap();
+
+    let runtime = temp.path().join("docker-fixture");
+    fs::write(
+        &runtime,
+        r#"#!/bin/sh
+case "$1" in
+  info) printf '%s\n' '{"ServerVersion":"27.3.1","SecurityOptions":[]}' ;;
+  *) exit 8 ;;
+esac
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(&runtime, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--runtime-bin"])
+        .arg(&runtime)
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["identity"]["container_uid"], serde_json::Value::Null);
+    assert!(json["summary"].as_str().unwrap().contains("build"));
+}
+
+#[test]
+fn share_json_redacts_runtime_errors_in_every_field() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        "{ remoteUser: \"0:0\" }",
+    )
+    .unwrap();
+    let runtime = temp.path().join("private/acme/team/docker-wrapper");
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--runtime-bin"])
+        .arg(&runtime)
+        .args(["--share", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let body = String::from_utf8(output.stdout).unwrap();
+    assert!(!body.contains(temp.path().to_str().unwrap()));
+    assert!(!body.contains(runtime.to_str().unwrap()));
+    assert!(body.contains("<runtime-bin>"));
+}
+
+#[test]
+fn share_json_redacts_an_explicit_relative_malformed_config_path() {
+    let temp = tempfile::tempdir().unwrap();
+    let relative = "target/qa/cases/malformed/.devcontainer/devcontainer.json";
+    let config = temp.path().join(relative);
+    fs::create_dir_all(config.parent().unwrap()).unwrap();
+    fs::write(&config, "{").unwrap();
+
+    let output = Command::new(binary())
+        .current_dir(temp.path())
+        .arg(".")
+        .args(["--config", relative, "--share", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let body = String::from_utf8(output.stdout).unwrap();
+    assert!(!body.contains(relative));
+    assert!(body.contains("<devcontainer-config>"));
+}
+
+#[test]
 fn invalid_config_is_unknown() {
     let temp = tempfile::tempdir().unwrap();
     fs::create_dir(temp.path().join(".devcontainer")).unwrap();

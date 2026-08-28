@@ -9,6 +9,7 @@ pub struct ProjectConfig {
     pub remote_user: Option<String>,
     pub remote_user_source: String,
     pub image: Option<String>,
+    pub build_source: Option<String>,
     pub workspace: Option<PathBuf>,
     pub read_only: bool,
     pub run_args: Vec<String>,
@@ -52,6 +53,10 @@ pub fn load(project: &Path, explicit: Option<&Path>) -> Result<ProjectConfig, St
         remote_user,
         remote_user_source,
         image: string_value(json.get("image")),
+        build_source: json
+            .get("build")
+            .filter(|value| !value.is_null())
+            .map(|_| "Dev Container build".to_string()),
         workspace: None,
         read_only: false,
         run_args: string_array(json.get("runArgs")),
@@ -112,6 +117,9 @@ fn merge_compose(
     }
     if let Some(image) = service.get("image").and_then(yaml_scalar) {
         result.image = Some(image);
+    }
+    if service.get("build").is_some_and(|value| !value.is_null()) {
+        result.build_source = Some(format!("Compose service {service_name} build"));
     }
     if result.workspace.is_none()
         && let Some(volumes) = service.get("volumes").and_then(|value| value.as_sequence())
@@ -320,6 +328,37 @@ services:
         assert_eq!(
             loaded.workspace.unwrap().canonicalize().unwrap(),
             temp.path().canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn recognizes_direct_and_compose_build_sources() {
+        let direct = tempfile::tempdir().unwrap();
+        fs::create_dir(direct.path().join(".devcontainer")).unwrap();
+        fs::write(
+            direct.path().join(".devcontainer/devcontainer.json"),
+            r#"{ build: { dockerfile: "Dockerfile" } }"#,
+        )
+        .unwrap();
+        let loaded = load(direct.path(), None).unwrap();
+        assert_eq!(loaded.build_source.as_deref(), Some("Dev Container build"));
+
+        let compose = tempfile::tempdir().unwrap();
+        fs::create_dir(compose.path().join(".devcontainer")).unwrap();
+        fs::write(
+            compose.path().join(".devcontainer/devcontainer.json"),
+            r#"{ dockerComposeFile: "compose.yml", service: "app" }"#,
+        )
+        .unwrap();
+        fs::write(
+            compose.path().join(".devcontainer/compose.yml"),
+            "services:\n  app:\n    build: .\n",
+        )
+        .unwrap();
+        let loaded = load(compose.path(), None).unwrap();
+        assert_eq!(
+            loaded.build_source.as_deref(),
+            Some("Compose service app build")
         );
     }
 }

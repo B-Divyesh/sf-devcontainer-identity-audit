@@ -150,8 +150,8 @@
           <table>
             <thead><tr><th scope="col">Adapter</th><th scope="col">Identity evidence</th><th scope="col">What stays untouched</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Docker</th><td>Direct Linux UID/GID mapping; image user metadata</td><td>Images, containers, host ownership</td></tr>
-              <tr><th scope="row">Rootless Podman</th><td>Live uid_map/gid_map plus keep-id or host intent</td><td>Subuid config, namespaces, bind mount</td></tr>
+              <tr><th scope="row">Docker</th><td data-label="Identity evidence">Direct Linux UID/GID mapping; image user metadata</td><td data-label="What stays untouched">Images, containers, host ownership</td></tr>
+              <tr><th scope="row">Rootless Podman</th><td data-label="Identity evidence">Live uid_map/gid_map plus keep-id or host intent</td><td data-label="What stays untouched">Subuid config, namespaces, bind mount</td></tr>
             </tbody>
           </table>
         </div>

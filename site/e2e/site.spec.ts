@@ -59,6 +59,31 @@ test("fits the viewport and keeps controls reachable", async ({ page }, testInfo
   await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
 });
 
+test("turns the adapter comparison into labelled rows at 390px", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "mobile-only adapter layout check");
+  await page.goto("/");
+
+  const comparison = page.getByRole("region", { name: "Runtime behavior comparison" });
+  await comparison.scrollIntoViewIfNeeded();
+  const dimensions = await comparison.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+
+  await expect(comparison.locator('tbody tr').first().locator('td').nth(0)).toHaveAttribute("data-label", "Identity evidence");
+  await expect(comparison.locator('tbody tr').first().locator('td').nth(1)).toHaveAttribute("data-label", "What stays untouched");
+  const visibleLabels = await comparison.locator("tbody td").evaluateAll((cells) =>
+    cells.map((cell) => getComputedStyle(cell, "::before").content.replaceAll('"', ""))
+  );
+  expect(visibleLabels).toEqual([
+    "Identity evidence",
+    "What stays untouched",
+    "Identity evidence",
+    "What stays untouched"
+  ]);
+});
+
 test("reflows at 200% mobile text size without clipping", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "mobile-only text resize check");
   await page.goto("/");

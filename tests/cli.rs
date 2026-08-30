@@ -45,6 +45,68 @@ fn reports_definite_permission_failure() {
     assert!(String::from_utf8_lossy(&output.stdout).starts_with("FAIL:"));
 }
 
+fn run_compose_identity_precedence_case(
+    remote_user: &str,
+    compose_user: &str,
+) -> std::process::Output {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        format!(
+            r#"{{
+                dockerComposeFile: "compose.yml",
+                service: "app",
+                remoteUser: "{remote_user}",
+                workspaceFolder: "/work"
+            }}"#
+        ),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/compose.yml"),
+        format!(
+            "services:\n  app:\n    image: local/example:latest\n    user: \"{compose_user}\"\n    volumes:\n      - ../:/work\n"
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o755)).unwrap();
+
+    Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--no-runtime", "--json"])
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn explicit_remote_user_wins_over_root_compose_user() {
+    let output = run_compose_identity_precedence_case("424242:424242", "0:0");
+
+    assert_eq!(output.status.code(), Some(1));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "fail");
+    assert_eq!(json["identity"]["container_uid"], 424242);
+    assert_eq!(json["identity"]["container_gid"], 424242);
+    assert_eq!(json["identity"]["source"], "devcontainer remoteUser");
+    assert_eq!(json["workspace"]["readable"], true);
+    assert_eq!(json["workspace"]["writable"], false);
+}
+
+#[test]
+fn explicit_root_remote_user_wins_over_non_root_compose_user() {
+    let output = run_compose_identity_precedence_case("0:0", "424242:424242");
+
+    assert_eq!(output.status.code(), Some(0));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "pass");
+    assert_eq!(json["identity"]["container_uid"], 0);
+    assert_eq!(json["identity"]["container_gid"], 0);
+    assert_eq!(json["identity"]["source"], "devcontainer remoteUser");
+    assert_eq!(json["workspace"]["readable"], true);
+    assert_eq!(json["workspace"]["writable"], true);
+}
+
 fn assert_uid_only_is_unknown(config: &str, extra_args: &[&str], runtime_user: Option<&str>) {
     let temp = tempfile::tempdir().unwrap();
     fs::create_dir(temp.path().join(".devcontainer")).unwrap();

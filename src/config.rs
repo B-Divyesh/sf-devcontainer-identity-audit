@@ -38,9 +38,11 @@ pub fn load(project: &Path, explicit: Option<&Path>) -> Result<ProjectConfig, St
         .map_err(|error| format!("Invalid JSONC in {}: {error}", path.display()))?;
 
     let base = project_root_for(&path);
-    let remote_user =
-        string_value(json.get("remoteUser")).or_else(|| string_value(json.get("containerUser")));
-    let remote_user_source = if json.get("remoteUser").is_some() {
+    let explicit_remote_user = string_value(json.get("remoteUser"));
+    let remote_user = explicit_remote_user
+        .clone()
+        .or_else(|| string_value(json.get("containerUser")));
+    let remote_user_source = if explicit_remote_user.is_some() {
         "devcontainer remoteUser"
     } else if json.get("containerUser").is_some() {
         "devcontainer containerUser"
@@ -84,6 +86,7 @@ pub fn load(project: &Path, explicit: Option<&Path>) -> Result<ProjectConfig, St
                 &compose_path,
                 service,
                 json.get("workspaceFolder").and_then(|v| v.as_str()),
+                explicit_remote_user.is_some(),
             )?;
         }
     }
@@ -96,6 +99,7 @@ fn merge_compose(
     path: &Path,
     service_name: &str,
     workspace_folder: Option<&str>,
+    has_explicit_remote_user: bool,
 ) -> Result<(), String> {
     let source = fs::read_to_string(path)
         .map_err(|error| format!("Cannot read Compose file {}: {error}", path.display()))?;
@@ -111,7 +115,7 @@ fn merge_compose(
             )
         })?;
 
-    if let Some(user) = service.get("user").and_then(yaml_scalar) {
+    if !has_explicit_remote_user && let Some(user) = service.get("user").and_then(yaml_scalar) {
         result.remote_user = Some(user);
         result.remote_user_source = format!("Compose service {service_name} user");
     }

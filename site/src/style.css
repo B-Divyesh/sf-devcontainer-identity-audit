@@ -164,6 +164,15 @@ footer p { margin: 0; }
   .result-head { align-items: flex-start; flex-direction: column; }
   .identity-grid div:nth-child(odd) { border-right: 0; }
   .method-list { gap: 48px; }
+  .comparison { overflow-x: visible; }
+  .comparison table, .comparison tbody, .comparison tr, .comparison th, .comparison td { display: block; width: 100%; }
+  .comparison table { min-width: 0; }
+  .comparison thead { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .comparison tbody tr + tr { border-top: 2px solid var(--ink); }
+  .comparison tbody th { padding: 16px; border-bottom: 1px solid var(--ink); background: var(--yellow); font-size: 20px; }
+  .comparison tbody td { display: grid; gap: 4px; padding: 16px; overflow-wrap: anywhere; }
+  .comparison tbody td::before { content: attr(data-label); color: var(--muted); font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .comparison tbody tr:last-child td:last-child { border-bottom: 0; }
   footer nav { align-items: flex-start; flex-direction: column; gap: 12px; }
 }
 

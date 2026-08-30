@@ -1,5 +1,5 @@
-const CACHE = "mia-site-v1";
-const SHELL = ["/privacy/", "/terms/", "/mount-ledger.webp", "/favicon.svg"];
+const CACHE = "mia-site-v4";
+const SHELL = ["/demo/", "/privacy/", "/terms/", "/404.html", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -8,7 +8,12 @@ self.addEventListener("install", (event) => {
     const html = await home.clone().text();
     const builtAssets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]);
     await cache.put("/", home);
-    await cache.addAll([...SHELL, ...new Set(builtAssets)]);
+    const resources = [...SHELL, ...new Set(builtAssets)];
+    await Promise.all(resources.map(async (url) => {
+      const response = await fetch(url, { cache: "reload" });
+      if (!response.ok) throw new Error(`Cannot precache ${url}: ${response.status}`);
+      await cache.put(url, response);
+    }));
   })());
   self.skipWaiting();
 });
@@ -24,5 +29,10 @@ self.addEventListener("fetch", (event) => {
     const copy = response.clone();
     caches.open(CACHE).then((cache) => cache.put(event.request, copy));
     return response;
-  }).catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))));
+  }).catch(async () => {
+    const cached = await caches.match(event.request, { ignoreVary: true });
+    if (cached) return cached;
+    if (event.request.mode === "navigate") return caches.match("/");
+    return Response.error();
+  }));
 });

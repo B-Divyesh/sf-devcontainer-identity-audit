@@ -151,6 +151,8 @@ pub fn map_identity(
     gid: u32,
     run_args: &[String],
 ) -> Result<(u32, u32), String> {
+    reject_reserved(uid, "container UID")?;
+    reject_reserved(gid, "container GID")?;
     if info.kind == "docker" {
         if info.rootless == Some(true) {
             return Err("rootless Docker UID maps are not supported in v1".into());
@@ -175,6 +177,8 @@ pub fn map_identity(
             .and_then(|value| option_number(value, "gid"))
             .unwrap_or(host_gid);
         if uid == configured_uid && gid == configured_gid {
+            reject_reserved(host_uid, "mapped host UID")?;
+            reject_reserved(host_gid, "mapped host GID")?;
             return Ok((host_uid, host_gid));
         }
     }
@@ -211,10 +215,24 @@ fn read_map(executable: &Path, path: &str) -> Result<Vec<(u32, u32, u32)>, Strin
 fn map_id(id: u32, rows: &[(u32, u32, u32)]) -> Result<u32, String> {
     for (container_start, host_start, count) in rows {
         if id >= *container_start && id < container_start.saturating_add(*count) {
-            return Ok(host_start + (id - container_start));
+            let mapped = host_start
+                .checked_add(id - container_start)
+                .ok_or_else(|| format!("container ID {id} overflows the runtime map"))?;
+            reject_reserved(mapped, "mapped host ID")?;
+            return Ok(mapped);
         }
     }
     Err(format!("container ID {id} is outside the runtime map"))
+}
+
+fn reject_reserved(id: u32, label: &str) -> Result<(), String> {
+    if id == u32::MAX {
+        Err(format!(
+            "{label} 4294967295 is reserved by Linux and cannot identify a process"
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 fn id_value(flag: &str) -> Result<u32, String> {
@@ -296,6 +314,7 @@ mod tests {
         assert_eq!(map_id(0, &rows).unwrap(), 1000);
         assert_eq!(map_id(1000, &rows).unwrap(), 100999);
         assert!(map_id(70000, &rows).is_err());
+        assert!(map_id(u32::MAX, &[(u32::MAX, u32::MAX, 1)]).is_err());
     }
 
     #[test]

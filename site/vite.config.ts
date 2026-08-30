@@ -11,7 +11,9 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       input: {
+        notFound: resolve(import.meta.dirname, "404.html"),
         main: resolve(import.meta.dirname, "index.html"),
+        demo: resolve(import.meta.dirname, "demo/index.html"),
         privacy: resolve(import.meta.dirname, "privacy/index.html"),
         terms: resolve(import.meta.dirname, "terms/index.html")
       }

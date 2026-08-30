@@ -1,0 +1,100 @@
+[
+  {
+    "id": "cli-demo",
+    "claim": "--demo copies and audits the bundled sample in an isolated temporary directory.",
+    "where": "README demo section and CLI help",
+    "test": "npm run test:claims -- --grep @claim:cli-demo",
+    "sandbox": "release binary; shipped sample hash; unique OS temporary directory"
+  },
+  {
+    "id": "browser-demo",
+    "claim": "Try it with sample data opens a working rootless Podman mismatch in one click.",
+    "where": "landing first screen",
+    "test": "npm run test:claims -- --grep @claim:browser-demo",
+    "sandbox": "fresh browser context at the home page"
+  },
+  {
+    "id": "permission-verdicts",
+    "claim": "The CLI uses stable exit codes 0, 1, and 2 for pass, fail, and unknown verdicts.",
+    "where": "README usage and CLI output",
+    "test": "npm run test:claims -- --grep @claim:permission-verdicts",
+    "sandbox": "three fresh numeric Docker/no-runtime fixtures"
+  },
+  {
+    "id": "read-only-safety",
+    "claim": "The audit changes no project files, starts no container, and makes at most three read-only runtime calls.",
+    "where": "landing proof strip and README",
+    "test": "npm run test:claims -- --grep @claim:read-only-safety",
+    "sandbox": "fresh project plus a recording rootless Podman adapter"
+  },
+  {
+    "id": "config-support",
+    "claim": "The CLI reads JSONC Dev Container files and selected Compose service metadata.",
+    "where": "landing how-it-works section and README",
+    "test": "npm run test:claims -- --grep @claim:config-support",
+    "sandbox": "fresh JSONC and Compose sample with a bind mount"
+  },
+  {
+    "id": "share-redaction",
+    "claim": "--share removes project, workspace, configuration, and runtime-wrapper paths from JSON reports.",
+    "where": "README and Privacy",
+    "test": "npm run test:claims -- --grep @claim:share-redaction",
+    "sandbox": "fresh project with private path segments and a missing runtime wrapper"
+  },
+  {
+    "id": "report-contract",
+    "claim": "JSON reports use schema version 1 and retain neutral path labels in share mode.",
+    "where": "README usage",
+    "test": "npm run test:claims -- --grep @claim:report-contract",
+    "sandbox": "fresh passing Docker/no-runtime project"
+  },
+  {
+    "id": "runtime-mapping",
+    "claim": "Docker direct IDs and rootless Podman live UID/GID maps are evaluated as separate runtime cases.",
+    "where": "landing runtime table and README",
+    "test": "npm run test:claims -- --grep @claim:runtime-mapping",
+    "sandbox": "direct Docker fixture and recording rootless Podman adapter"
+  },
+  {
+    "id": "conservative-identities",
+    "claim": "Named, UID-only, build-backed, and reserved Linux identities return UNKNOWN until a numeric UID:GID is proven.",
+    "where": "README limits and browser validation",
+    "test": "npm run test:claims -- --grep @claim:conservative-identities",
+    "sandbox": "four fresh CLI fixtures and direct browser validation"
+  },
+  {
+    "id": "browser-private",
+    "claim": "The browser sample sends no project data and stores no entered values.",
+    "where": "landing first screen, browser sample, Privacy, README",
+    "test": "npm run test:claims -- --grep @claim:browser-private",
+    "sandbox": "fresh browser context with request, cookie, Web Storage, and IndexedDB capture"
+  },
+  {
+    "id": "cli-private",
+    "claim": "The CLI includes no network or telemetry client and requires no account.",
+    "where": "README privacy section",
+    "test": "npm run test:claims -- --grep @claim:cli-private",
+    "sandbox": "normal dependency manifest, Rust source scan, and bundled demo execution"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "The browser sample works offline after the first visit.",
+    "where": "offline banner, README, demo documentation",
+    "test": "npm run test:claims -- --grep @claim:offline-reload",
+    "sandbox": "dedicated fresh context set offline after service-worker activation"
+  },
+  {
+    "id": "browser-parity",
+    "claim": "The browser sample follows the CLI owner, group, mode, and rootless mapping rules.",
+    "where": "landing browser sample",
+    "test": "npm run test:claims -- --grep @claim:browser-parity",
+    "sandbox": "known rootless mismatch and keep-id recovery"
+  },
+  {
+    "id": "mit-license",
+    "claim": "Mount Identity Audit is free under the MIT License.",
+    "where": "landing first screen, README, Terms",
+    "test": "npm run test:claims -- --grep @claim:mit-license",
+    "sandbox": "landing copy, package metadata, and shipped license text"
+  }
+]

@@ -9,9 +9,13 @@ describe("static deployment response policy", () => {
     expect(config.globalHeaders["Strict-Transport-Security"]).toContain("preload");
   });
 
-  it("marks content-hashed assets and the immutable hero cacheable for one year", () => {
+  it("marks only content-hashed assets immutable for one year", () => {
     const immutable = "public, max-age=31536000, immutable";
     expect(config.routes).toContainEqual({ route: "/assets/*", headers: { "Cache-Control": immutable } });
-    expect(config.routes).toContainEqual({ route: "/mount-ledger.webp", headers: { "Cache-Control": immutable } });
+    expect(config.routes).not.toContainEqual({ route: "/mount-ledger.webp", headers: { "Cache-Control": immutable } });
+  });
+
+  it("rewrites unknown routes to a designed 404 document", () => {
+    expect(config.responseOverrides).toEqual({ 404: { rewrite: "/404.html" } });
   });
 });

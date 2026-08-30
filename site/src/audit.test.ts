@@ -46,6 +46,24 @@ describe("browser audit model", () => {
       mode: "0777",
       runtime: "podman",
       userns: "default"
-    })).toThrow(/Mapped UID is outside the Linux ID range/);
+    })).toThrow(/Owner UID must be below Linux's reserved 4294967295 value/);
+  });
+
+  it.each(["ownerUid", "ownerGid", "remoteUid", "remoteGid"] as const)(
+    "rejects reserved Linux identity in %s for direct Docker",
+    (field) => {
+      expect(() => evaluateAudit({ ...base, [field]: "4294967295" })).toThrow(
+        /reserved 4294967295/
+      );
+    }
+  );
+
+  it("rejects a rootless mapping that reaches the reserved Linux identity", () => {
+    expect(() => evaluateAudit({
+      ...base,
+      remoteUid: "4294867296",
+      runtime: "podman",
+      userns: "default"
+    })).toThrow(/Mapped UID must be below Linux's reserved 4294967295 value/);
   });
 });

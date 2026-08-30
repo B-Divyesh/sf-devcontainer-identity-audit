@@ -7,6 +7,23 @@ fn binary() -> &'static str {
 }
 
 #[test]
+fn demo_runs_the_bundled_sample_in_a_temporary_project() {
+    let shipped = fs::read("examples/mismatch/.devcontainer/devcontainer.json").unwrap();
+    let output = Command::new(binary()).arg("--demo").output().unwrap();
+
+    assert_eq!(output.status.code(), Some(1));
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("DEMO — bundled sample data"));
+    assert!(stdout.contains("Sample copy:"));
+    assert!(stdout.contains("MOUNT IDENTITY AUDIT"));
+    assert!(stdout.contains("FAIL"));
+    assert_eq!(
+        fs::read("examples/mismatch/.devcontainer/devcontainer.json").unwrap(),
+        shipped
+    );
+}
+
+#[test]
 fn documented_no_runtime_example_passes_for_owner() {
     let temp = tempfile::tempdir().unwrap();
     fs::create_dir(temp.path().join(".devcontainer")).unwrap();
@@ -43,6 +60,58 @@ fn reports_definite_permission_failure() {
         .unwrap();
     assert_eq!(output.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&output.stdout).starts_with("FAIL:"));
+}
+
+#[test]
+fn reserved_linux_identity_is_unknown_in_direct_docker_mode() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        "{ remoteUser: \"4294967295:4294967295\" }",
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o777)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--no-runtime", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["identity"]["container_uid"], serde_json::Value::Null);
+    assert!(json["summary"].as_str().unwrap().contains("reserved"));
+    assert!(
+        json["remediations"]
+            .to_string()
+            .contains("below 4294967295")
+    );
+}
+
+#[test]
+fn reserved_linux_identity_is_unknown_in_podman_host_mode() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        r#"{ remoteUser: "4294967295:4294967295", runArgs: ["--userns", "host"] }"#,
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o777)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "podman", "--no-runtime", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert!(json["summary"].as_str().unwrap().contains("reserved"));
 }
 
 fn run_compose_identity_precedence_case(

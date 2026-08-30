@@ -1,0 +1,5 @@
+{
+  "name": "Rootless ownership mismatch",
+  "image": "local/mount-audit-demo:latest",
+  "remoteUser": "1000:1000"
+}

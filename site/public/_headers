@@ -6,6 +6,3 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-
-/mount-ledger.webp
-  Cache-Control: public, max-age=31536000, immutable

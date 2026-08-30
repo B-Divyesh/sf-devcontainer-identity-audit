@@ -251,6 +251,11 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
                             "Resolve UID {raw}'s primary group inside the image and rerun with --remote-user UID:GID. The audit will not invent a same-number GID."
                         ),
                     ),
+                    NumericUserError::Reserved => (
+                        format!("reserved Linux identity {raw:?}"),
+                        "The intended remote user contains Linux's reserved 4294967295 identity value.",
+                        "Choose a usable UID:GID below 4294967295 and rerun the audit.".to_string(),
+                    ),
                     NumericUserError::NotNumeric => (
                         format!("named or invalid user {raw:?}"),
                         "The intended remote user has no safely resolvable numeric identity.",
@@ -364,6 +369,12 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
                                 format!(
                                     "Resolve image UID {raw}'s primary group and rerun with --remote-user UID:GID. The audit will not invent a same-number GID."
                                 ),
+                            ),
+                            NumericUserError::Reserved => (
+                                format!("reserved Linux image identity {raw:?}"),
+                                "The image declares Linux's reserved 4294967295 identity value.",
+                                "Choose a usable image UID:GID below 4294967295 or pass --remote-user UID:GID."
+                                    .to_string(),
                             ),
                             NumericUserError::NotNumeric => (
                                 format!("image user {raw:?}"),
@@ -511,6 +522,7 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NumericUserError {
     MissingGid,
+    Reserved,
     NotNumeric,
 }
 
@@ -525,10 +537,14 @@ fn parse_numeric_user(raw: &str) -> Result<(u32, u32), NumericUserError> {
             NumericUserError::NotNumeric
         });
     };
-    Ok((
+    let pair = (
         uid.parse().map_err(|_| NumericUserError::NotNumeric)?,
         gid.parse().map_err(|_| NumericUserError::NotNumeric)?,
-    ))
+    );
+    if pair.0 == u32::MAX || pair.1 == u32::MAX {
+        return Err(NumericUserError::Reserved);
+    }
+    Ok(pair)
 }
 
 fn access_for(mode: u32, owner_uid: u32, owner_gid: u32, uid: u32, gid: u32) -> (bool, bool) {
@@ -790,6 +806,14 @@ mod tests {
         assert_eq!(
             parse_numeric_user("vscode"),
             Err(NumericUserError::NotNumeric)
+        );
+        assert_eq!(
+            parse_numeric_user("4294967295:1000"),
+            Err(NumericUserError::Reserved)
+        );
+        assert_eq!(
+            parse_numeric_user("1000:4294967295"),
+            Err(NumericUserError::Reserved)
         );
     }
 

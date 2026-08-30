@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - 2026-08-30
+
+- Added isolated CLI and browser sample modes with claim-tagged regression tests.
+- Rejected Linux's reserved UID/GID value `4294967295` across CLI and browser paths.
+- Added complete route metadata, a designed 404 response, legal-page shells, and build identity.
+
 ## Unreleased
 
 - Keep an explicit Dev Container `remoteUser` authoritative when the selected

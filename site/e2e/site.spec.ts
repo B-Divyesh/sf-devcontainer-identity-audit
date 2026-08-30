@@ -8,7 +8,7 @@ test("loads without console errors and exposes the page structure", async ({ pag
   await expect(page).toHaveTitle(/Mount Identity Audit/);
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.locator("main")).toHaveCount(1);
-  await expect(page.locator("img")).toHaveAttribute("alt", /host computer and container workspace/i);
+  await expect(page.getByRole("img", { name: /host computer and container workspace/i })).toBeVisible();
   await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -30,19 +30,20 @@ test("announces validation errors", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("octal digits");
 });
 
-test("rejects a rootless mapping that exceeds the Linux ID range", async ({ page }) => {
+test("rejects the reserved Linux identity in direct Docker mode", async ({ page }) => {
   await page.goto("/#demo");
   for (const label of ["Owner UID", "Owner GID", "Remote UID", "Remote GID"]) {
     await page.getByLabel(label).fill("4294967295");
   }
   await page.getByLabel("Directory mode").fill("0777");
+  await page.locator("#runtime").selectOption("docker");
   await page.getByRole("button", { name: "Run preflight" }).click();
-  await expect(page.getByRole("alert")).toContainText("Mapped UID is outside the Linux ID range");
+  await expect(page.getByRole("alert")).toContainText("reserved 4294967295");
   await expect(page.locator("#status-stamp")).toHaveText("Ready");
 });
 
 test("has no serious or critical accessibility violations on every page", async ({ page }) => {
-  for (const path of ["/", "/privacy/", "/terms/"]) {
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
     await test.step(path, async () => {
       await page.goto(path);
       const results = await new AxeBuilder({ page }).analyze();
@@ -57,8 +58,8 @@ test("fits the viewport and keeps controls reachable", async ({ page }, testInfo
   await page.goto("/");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.getByRole("link", { name: "Try the audit" }).click();
-  await expect(page.getByRole("heading", { name: "Test an identity mapping" })).toBeInViewport();
+  await page.getByRole("link", { name: "Try it with sample data" }).click();
+  await expect(page.getByRole("heading", { name: "Inspect the sample mount mismatch" })).toBeInViewport();
   await page.getByRole("button", { name: "Run preflight" }).scrollIntoViewIfNeeded();
   await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
 });
@@ -152,9 +153,9 @@ test("keeps demo data local and stores no user values", async ({ page, context }
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("/");
   await page.getByLabel("Owner UID").fill("1234");
-  const beforeRun = requests.length;
   await page.getByRole("button", { name: "Run preflight" }).click();
-  expect(requests).toHaveLength(beforeRun);
+  expect(requests.join("\n")).not.toContain("1234");
+  expect(requests.every((request) => new URL(request).origin === new URL(page.url()).origin)).toBe(true);
   expect(await context.cookies()).toEqual([]);
   const storage = await page.evaluate(async () => ({
     local: localStorage.length,
@@ -192,11 +193,36 @@ test("shows the offline fallback and legal pages", async ({ page, context }) => 
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
   await expect(page.locator("#offline-banner")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Know who owns the mount");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Check mount permissions");
   expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
   await context.setOffline(false);
   await page.goto("/privacy/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy");
   await page.goto("/terms/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Terms");
+});
+
+test("demo resets sample state and exits to the real calculator", async ({ page }) => {
+  await page.goto("/demo/");
+  await expect(page.locator("#status-stamp")).toHaveText("fail");
+  await page.getByRole("button", { name: "Load safe example" }).click();
+  await expect(page.locator("#status-stamp")).toHaveText("pass");
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.locator("#status-stamp")).toHaveText("fail");
+  await expect(page.getByLabel("Podman user namespace")).toHaveValue("default");
+  await page.getByRole("link", { name: "Start for real" }).click();
+  await expect(page).toHaveURL(/\/#demo$/);
+  await expect(page.getByRole("heading", { name: "Test an identity mapping" })).toBeVisible();
+});
+
+test("every route exposes complete metadata and the standard shell", async ({ page }) => {
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+    await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    await expect(page.locator("header nav")).toBeVisible();
+    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-5");
+  }
 });

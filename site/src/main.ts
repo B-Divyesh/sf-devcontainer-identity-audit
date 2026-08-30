@@ -53,6 +53,19 @@ function runAudit(): void {
   }
 }
 
+function loadMismatchSample(): void {
+  select<HTMLInputElement>("#owner-uid").value = "1000";
+  select<HTMLInputElement>("#owner-gid").value = "1000";
+  select<HTMLInputElement>("#remote-uid").value = "1000";
+  select<HTMLInputElement>("#remote-gid").value = "1000";
+  select<HTMLInputElement>("#mode").value = "0755";
+  runtime.value = "podman";
+  userns.value = "default";
+  select<HTMLInputElement>("#read-only").checked = false;
+  updateRuntimeFields();
+  runAudit();
+}
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   runAudit();
@@ -66,6 +79,11 @@ select("#load-safe").addEventListener("click", () => {
   runAudit();
 });
 
+document.querySelector<HTMLButtonElement>("#reset-demo")?.addEventListener("click", () => {
+  loadMismatchSample();
+  result.focus();
+});
+
 function updateRuntimeFields(): void {
   const isPodman = runtime.value === "podman";
   usernsLabel.hidden = !isPodman;
@@ -73,6 +91,10 @@ function updateRuntimeFields(): void {
 }
 runtime.addEventListener("change", updateRuntimeFields);
 updateRuntimeFields();
+
+if (document.body.dataset.demo === "true") {
+  loadMismatchSample();
+}
 
 document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {

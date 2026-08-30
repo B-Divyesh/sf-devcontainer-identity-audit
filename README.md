@@ -1,15 +1,14 @@
 # Mount Identity Audit
 
-Mount Identity Audit is a read-only preflight for Dev Containers and rootless
-Podman workspaces. Before an editor opens or a container starts, it compares the
-workspace’s host ownership and mode bits with the numeric identity that the
-configured remote user will have at the bind mount.
+Mount Identity Audit checks bind-mount ownership before a Dev Container or
+rootless Podman workspace starts. It compares host permissions with the mapped
+numeric container identity.
 
 It is for developers and CI maintainers who would rather see a precise ownership
 report than discover a `Permission denied` after startup.
 
-Live documentation and local demo:
-[devcontainer-identity-audit.sociobot.in](https://devcontainer-identity-audit.sociobot.in)
+Live documentation and one-click sample:
+[devcontainer-identity-audit.sociobot.in/demo/](https://devcontainer-identity-audit.sociobot.in/demo/)
 
 ## Install
 
@@ -20,14 +19,26 @@ cargo install --path .
 mount-identity-audit --help
 ```
 
-No daemon, account, network request, or telemetry is involved. Docker or Podman
-is optional when every identity is supplied numerically.
+The CLI needs no account. It includes no HTTP or telemetry client. Docker or
+Podman is optional when every identity is supplied numerically.
+
+## Try the bundled sample
+
+Run one command without pointing the audit at your project:
+
+```sh
+mount-identity-audit --demo
+```
+
+The command copies `examples/mismatch/` into a unique temporary directory. It
+prints that path and audits the copy. The known write mismatch returns `FAIL`
+with exit code `1`; this preserves the normal scripting contract.
 
 ## Usage
 
 Run it from a repository. The CLI discovers `.devcontainer/devcontainer.json`,
-`.devcontainer.json`, or `devcontainer.json`, then follows Compose metadata when
-the configuration names a Compose service.
+`.devcontainer.json`, or `devcontainer.json`. It follows Compose metadata when
+the configuration names a service.
 
 ```sh
 mount-identity-audit .
@@ -71,6 +82,7 @@ Arguments:
   [PROJECT]  Project directory to inspect [default: .]
 
 Options:
+      --demo                   Run the bundled sample in an isolated temporary project
       --config <FILE>          Dev Container configuration to read
       --workspace <PATH>       Host workspace path when it cannot be inferred
       --remote-user <UID:GID>  Numeric intended container identity
@@ -92,8 +104,8 @@ Exit codes are stable:
   named-user resolution error).
 
 The process never runs `chown`, edits configuration, pulls an image, creates a
-container, or starts one. Runtime calls are limited to `info`, `image inspect`,
-and, for rootless Podman, `unshare … /proc/self/{uid,gid}_map`.
+container, or starts one. An audit makes at most three read-only runtime calls.
+Those calls use `info`, `image inspect`, or rootless Podman identity maps.
 
 ## What it understands
 
@@ -112,14 +124,15 @@ stays authoritative when a Compose service declares a different `user`.
 Compose `user` is the fallback when `remoteUser` is absent.
 
 Named image users and UID-only values do not prove a primary GID without
-running a container. In either case the audit returns `UNKNOWN` and tells you
-to provide `--remote-user UID:GID`; it never invents a same-number group. POSIX
-ACLs, SELinux/AppArmor labels, remote filesystems, and runtime mutations
-performed during container creation remain outside the v1 permission model and
-are called out in every detailed report. Build-backed configurations without an
-explicit numeric user also return `UNKNOWN`, even when Compose also declares an
-`image` tag: the CLI never builds an image, assumes its Dockerfile user is root,
-or trusts a possibly stale tag as evidence of current build inputs.
+running a container. The audit returns `UNKNOWN` and requests
+`--remote-user UID:GID`; it never invents a same-number group. Linux reserves
+ID `4294967295`, so the CLI rejects it as `UNKNOWN`.
+
+POSIX ACLs, security labels, remote filesystems, and startup mutations remain
+outside the v1 permission model. Every detailed report states these limits.
+Build-backed configurations without an explicit numeric user also return
+`UNKNOWN`. The CLI never trusts a possibly stale image tag as current build
+evidence.
 
 ## Develop, test, and build
 
@@ -129,12 +142,13 @@ Desktop filesystem translation on native macOS/Windows is outside the v1 model.
 ```sh
 npm install
 npm test
+npm run lint
 npm run build
 ```
 
-`npm test` runs Rust unit/integration tests and site tests. `npm run build`
-produces the release binary and the deployable documentation site at
-`dist/site/index.html`. Run the site locally with `npm run dev`.
+`npm test` runs Rust unit, integration, claim, and browser tests. `npm run build`
+produces the release binary and the deployable site at `dist/site`. Run the
+site locally with `npm run dev`.
 
 To build only one artifact:
 
@@ -148,9 +162,12 @@ intentionally left to the Param Factory.
 
 ## Privacy and security
 
-All analysis runs locally. The CLI has no network client and no telemetry. The
-website’s demo runs entirely in the browser, stores nothing, and sends no
-project contents. Use `--share` before attaching reports to public issues.
+The CLI includes no network or telemetry client. The browser sample stores no
+entered values and sends no project data. After the first visit, it reloads
+offline. Use `--share` before attaching reports to public issues.
+
+Every public promise is listed in [`.factory/claims.json`](.factory/claims.json).
+Run one claim with its listed command or run all coverage with `npm test`.
 
 ## License
 

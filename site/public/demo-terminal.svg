@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-labelledby="title desc">
+  <title id="title">Mount Identity Audit CLI demo</title>
+  <desc id="desc">A terminal shows the bundled sample, a failed workspace write check, and a keep-id remediation.</desc>
+  <rect width="900" height="420" fill="#171a17"/>
+  <rect width="900" height="48" fill="#293029"/>
+  <circle cx="26" cy="24" r="7" fill="#b43c24"/>
+  <circle cx="50" cy="24" r="7" fill="#e6c84f"/>
+  <circle cx="74" cy="24" r="7" fill="#17624a"/>
+  <g fill="#fffdf7" font-family="ui-monospace, monospace" font-size="18">
+    <text x="28" y="88"><tspan fill="#e6c84f">$</tspan> mount-identity-audit --demo</text>
+    <text x="28" y="126">DEMO — bundled sample data; your project was not read or changed.</text>
+    <text x="28" y="178" font-weight="700">MOUNT IDENTITY AUDIT</text>
+    <text x="790" y="178" fill="#e7795e" font-weight="700">FAIL</text>
+    <text x="28" y="226" fill="#e6c84f">CHECK</text>
+    <text x="205" y="226" fill="#e6c84f">EXPECTED</text>
+    <text x="545" y="226" fill="#e6c84f">STATUS</text>
+    <text x="28" y="266">remote user</text>
+    <text x="205" y="266">container 1000:1000</text>
+    <text x="545" y="266" fill="#9bd5bd">PASS</text>
+    <text x="28" y="304">workspace</text>
+    <text x="205" y="304">read + write + traverse</text>
+    <text x="545" y="304" fill="#e7795e">FAIL</text>
+    <text x="28" y="360">Use a UID:GID that maps to the workspace owner.</text>
+  </g>
+</svg>

@@ -27,13 +27,13 @@ export class AuditInputError extends Error {}
 const numericId = (value: string, label: string): number => {
   if (!/^\d+$/.test(value.trim())) throw new AuditInputError(`${label} must be a non-negative number.`);
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed > 4_294_967_295) throw new AuditInputError(`${label} is outside the Linux ID range.`);
+  if (!Number.isSafeInteger(parsed) || parsed >= 4_294_967_295) throw new AuditInputError(`${label} must be below Linux's reserved 4294967295 value.`);
   return parsed;
 };
 
 const mappedId = (value: number, label: string): number => {
-  if (!Number.isSafeInteger(value) || value > 4_294_967_295) {
-    throw new AuditInputError(`${label} is outside the Linux ID range.`);
+  if (!Number.isSafeInteger(value) || value >= 4_294_967_295) {
+    throw new AuditInputError(`${label} must be below Linux's reserved 4294967295 value.`);
   }
   return value;
 };

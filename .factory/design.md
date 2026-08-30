@@ -66,7 +66,7 @@ becomes a narrow crop; no essential content is removed.
 
 ## Original asset plan and provenance
 
-`site/public/mount-ledger.webp` is the sole raster hero: a text-free editorial
+`site/public/mount-ledger.webp` is the primary raster illustration: a text-free editorial
 cutaway of a host folder and container workspace aligned through UID/GID
 registration plates. It clarifies the mapping concept, not merely the mood. The
 source PNG is not shipped.
@@ -86,6 +86,13 @@ source PNG is not shipped.
 - License: original work generated for this MIT-licensed project, 2026-08-28.
 - CSS halftone fields and registration marks are hand-authored, deterministic
   gradients used as layout texture; they are not stock assets.
+
+Derived release assets keep the same provenance. `social-card.webp` is a
+deterministic 1200×630 center crop of `mount-ledger.webp` for link previews.
+`apple-touch-icon.png` is a deterministic square crop of that same art.
+`demo-terminal.svg` is a hand-authored, text-accessible recording frame based on
+the real `mount-identity-audit --demo` output. No stock or third-party asset was
+introduced.
 
 ## Accessibility and performance constraints
 

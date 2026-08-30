@@ -41,11 +41,15 @@ test("rejects a rootless mapping that exceeds the Linux ID range", async ({ page
   await expect(page.locator("#status-stamp")).toHaveText("Ready");
 });
 
-test("has no serious or critical accessibility violations", async ({ page }) => {
-  await page.goto("/");
-  const results = await new AxeBuilder({ page }).analyze();
-  const serious = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""));
-  expect(serious).toEqual([]);
+test("has no serious or critical accessibility violations on every page", async ({ page }) => {
+  for (const path of ["/", "/privacy/", "/terms/"]) {
+    await test.step(path, async () => {
+      await page.goto(path);
+      const results = await new AxeBuilder({ page }).analyze();
+      const serious = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""));
+      expect(serious).toEqual([]);
+    });
+  }
 });
 
 test("fits the viewport and keeps controls reachable", async ({ page }, testInfo) => {

@@ -16,6 +16,7 @@ describe("static deployment response policy", () => {
   });
 
   it("rewrites unknown routes to a designed 404 document", () => {
+    expect("navigationFallback" in config).toBe(false);
     expect(config.responseOverrides).toEqual({ 404: { rewrite: "/404.html" } });
   });
 });

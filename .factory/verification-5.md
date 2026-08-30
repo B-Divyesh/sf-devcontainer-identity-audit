@@ -46,8 +46,9 @@ fatal: remote error: upload-pack: not our ref d82877c57de48b2f68055e551f2b5e9ea1
 ```
 
 `git fetch --all --prune --tags`, `git branch -a --contains`, and
-`git ls-remote origin` confirmed that the candidate is absent. The only remote
-branch is `main` at `d82877d…`. No dangling local object contains the candidate.
+`git ls-remote origin` confirmed that the candidate is absent. Before this
+report was pushed, the only remote branch was `main` at `d82877d…`. No dangling
+local object contains the candidate.
 Consequently, candidate-local tests and a candidate-to-live comparison are
 impossible. Publishing the exact candidate is required before another release
 review.

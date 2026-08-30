@@ -5,8 +5,9 @@
 Requested candidate `d82877c57de48b2f68055e551f2b5e9ea1b2badf`
 cannot be fetched from the provided repository and is absent from all remote
 refs. The live deployment is healthy and byte-identical to the site built from
-reachable `main` revision `d82877ddec3ba114f820fee6870cbc5d96587be1`, but
-that cannot establish a match to the requested candidate.
+the pre-verification `main` revision
+`d82877ddec3ba114f820fee6870cbc5d96587be1`, but that cannot establish a match
+to the requested candidate.
 
 The full evidence and reproductions are in
 [`.factory/verification-5.md`](verification-5.md).

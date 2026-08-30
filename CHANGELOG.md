@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep an explicit Dev Container `remoteUser` authoritative when the selected
+  Compose service declares a different `user`.
+- Reflow the Docker/Podman comparison into labelled rows at 390 px instead of
+  requiring a 700 px horizontal scroll.
 - Return `UNKNOWN` for UID-only users from config, CLI overrides, Compose, or
   image metadata instead of inventing a same-number primary GID.
 - Do not trust a possibly stale Compose `image` tag when the service is backed

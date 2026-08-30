@@ -107,6 +107,10 @@ and, for rootless Podman, `unshare … /proc/self/{uid,gid}_map`.
   `--userns host` intent;
 - host owner/group/mode and read-only mount declarations.
 
+An explicit Dev Container `remoteUser` is the intended editor identity. It
+stays authoritative when a Compose service declares a different `user`.
+Compose `user` is the fallback when `remoteUser` is absent.
+
 Named image users and UID-only values do not prove a primary GID without
 running a container. In either case the audit returns `UNKNOWN` and tells you
 to provide `--remote-user UID:GID`; it never invents a same-number group. POSIX

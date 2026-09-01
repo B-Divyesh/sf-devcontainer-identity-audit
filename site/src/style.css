@@ -19,6 +19,7 @@
 
 * { box-sizing: border-box; }
 html { overflow-x: clip; scroll-behavior: smooth; }
+html.demo-route { scroll-behavior: auto; }
 body { margin: 0; min-width: 320px; overflow-x: clip; background-color: var(--paper); font-size: 16px; line-height: 1.55; }
 body::before { content: ""; position: fixed; inset: 0; z-index: -1; opacity: .18; pointer-events: none; background-image: radial-gradient(var(--ink) .55px, transparent .65px); background-size: 5px 5px; }
 a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 2px; }
@@ -28,10 +29,13 @@ button, select { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
 .skip-link { position: fixed; z-index: 20; top: 8px; left: 8px; padding: 12px 16px; background: var(--ink); color: var(--sheet); transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
+.route-status { position: fixed; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .site-header { width: min(1180px, calc(100% - 48px)); margin: 0 auto; min-height: 88px; display: flex; align-items: center; justify-content: space-between; gap: 32px; border-bottom: 2px solid var(--ink); }
 .brand { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; text-decoration: none; }
-.brand-mark { display: inline-grid; place-items: center; min-width: 48px; height: 36px; padding: 0 7px; border: 2px solid var(--ink); background: var(--yellow); box-shadow: 3px 3px 0 var(--orange); font-weight: 900; }
+.brand-mark { position: relative; display: inline-block; min-width: 48px; height: 36px; border: 2px solid var(--ink); background: var(--yellow); box-shadow: 3px 3px 0 var(--orange); }
+.brand-mark::before { content: ""; position: absolute; left: 9px; top: 11px; width: 8px; height: 8px; border: 2px solid var(--ink); border-radius: 50%; box-shadow: 19px 0 0 -2px var(--yellow), 19px 0 0 0 var(--ink); }
+.brand-mark::after { content: ""; position: absolute; left: 18px; top: 15px; width: 12px; border-top: 2px solid var(--ink); }
 .site-header nav, footer nav { display: flex; align-items: center; gap: 28px; font-size: 14px; font-weight: 700; }
 .site-header nav a, footer nav a { display: inline-flex; min-height: 44px; align-items: center; }
 .offline-banner { padding: 10px 24px; text-align: center; background: var(--yellow); border-bottom: 2px solid var(--ink); font-weight: 700; }
@@ -52,6 +56,7 @@ h1 em { color: var(--orange); font-style: normal; text-decoration: underline; te
 .install-strip code { overflow-x: auto; padding: 14px 16px; white-space: nowrap; }
 .copy-button { min-width: 84px; min-height: 48px; border: 0; border-left: 2px solid var(--ink); background: var(--yellow); color: var(--ink); font-weight: 800; }
 .copy-button:active, .primary-button:active { transform: translate(2px, 2px); }
+.copy-feedback { min-height: 24px; margin: 8px 0 0; color: var(--muted); font-size: 13px; font-weight: 700; }
 .microcopy { margin: 16px 0 0; color: var(--muted); font-size: 13px; }
 .plain-facts { display: grid; gap: 2px; margin: 8px 0 0; padding: 0; color: var(--muted); font-size: 13px; list-style: none; }
 .plain-facts li::before { content: "✓ "; color: var(--green); font-weight: 900; }
@@ -155,6 +160,7 @@ footer p { margin: 0; }
 .demo-main { padding: 72px max(24px, calc((100% - 1180px) / 2)) 104px; }
 .demo-main > .section-intro { margin-bottom: 40px; }
 .audit-result:focus { outline: 3px solid var(--green); outline-offset: 4px; }
+#demo-title, .demo-main h1 { scroll-margin-top: 88px; }
 
 @keyframes stamp-in { from { opacity: 0; transform: rotate(-7deg) scale(1.3); } to { opacity: 1; transform: rotate(-7deg) scale(1); } }
 
@@ -203,6 +209,27 @@ footer p { margin: 0; }
   .comparison tbody td::before { content: attr(data-label); color: var(--muted); font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
   .comparison tbody tr:last-child td:last-child { border-bottom: 0; }
   footer nav { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .demo-banner { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 4px 8px 6px; }
+  .demo-banner p { grid-column: 1 / -1; text-align: center; font-size: 12px; line-height: 1.2; }
+  .demo-banner button, .demo-banner a { display: inline-flex; align-items: center; justify-content: center; min-width: 0; padding: 5px 7px; font-size: 11px; line-height: 1.15; text-align: center; }
+  #demo-title, .demo-main h1 { scroll-margin-top: 82px; }
+  .is-demo-mode .demo-section { padding-top: 24px; }
+  .is-demo-mode .demo-section .section-intro, .is-demo-mode .demo-main > .section-intro { margin-bottom: 16px; }
+  .is-demo-mode .demo-main { padding-top: 24px; }
+  .is-demo-mode .audit-desk { display: flex; flex-direction: column; }
+  .is-demo-mode .audit-result { order: -1; padding: 14px; border-bottom: 2px solid var(--ink); }
+  .is-demo-mode .audit-form { border-bottom: 0; }
+  .is-demo-mode .result-head { flex-direction: row; align-items: center; gap: 12px; padding-bottom: 10px; }
+  .is-demo-mode .status-stamp { width: 58px; height: 58px; border-width: 3px; font-size: 14px; }
+  .is-demo-mode .result-head h2, .is-demo-mode .result-head h3 { font-size: 1.65rem; }
+  .is-demo-mode .result-kicker { margin-bottom: 2px; font-size: 10px; }
+  .is-demo-mode #result-summary { margin: 10px 0; font-size: 15px; line-height: 1.35; }
+  .is-demo-mode .identity-grid { grid-template-columns: 1fr 1fr; }
+  .is-demo-mode .identity-grid div { padding: 6px 8px; }
+  .is-demo-mode .identity-grid div:nth-child(odd) { border-right: 1px solid var(--rule); }
+  .is-demo-mode .identity-grid dt { font-size: 11px; }
+  .is-demo-mode .identity-grid dd { font-size: 14px; overflow-wrap: anywhere; }
+  .is-demo-mode .remedy { margin-top: 10px; padding: 8px 10px; font-size: 14px; line-height: 1.3; }
 }
 
 @media (prefers-reduced-motion: reduce) {

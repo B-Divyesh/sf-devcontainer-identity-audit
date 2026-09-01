@@ -17,7 +17,8 @@ describe("public page structure", () => {
     expect(html).toMatch(/<meta property="og:image"/);
     expect(html).toMatch(/<meta name="twitter:card"/);
     expect(html).toMatch(/<link rel="apple-touch-icon"/);
-    expect(html).toContain("v0.1.0 · polish-1");
+    expect(html).toContain("v0.1.0 · polish-2");
+    expect(html).toContain('id="route-status" aria-live="polite"');
   });
 
   it("ships the social, touch, recording, demo, and audit documents", () => {

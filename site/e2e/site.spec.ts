@@ -32,6 +32,7 @@ test("query demo is isolated, labelled, and moves focus to the sample heading", 
   await expect(page.getByText("Demo — sample data, nothing is saved")).toBeVisible();
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+  await expect(page.locator("#route-status")).toHaveText("Check numeric workspace access");
   await page.getByRole("button", { name: "Load safe example" }).click();
   await expect(page.locator("#status-stamp")).toHaveText("pass");
   await page.getByRole("button", { name: "Reset demo" }).click();
@@ -39,6 +40,29 @@ test("query demo is isolated, labelled, and moves focus to the sample heading", 
   await page.getByRole("link", { name: "Open blank browser check" }).click();
   await expect(page).toHaveURL(/\/#demo$/);
   await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+});
+
+test("legal and demo routes focus and announce their headings across history", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Privacy" }).first().click();
+  await expect(page).toHaveURL(/\/privacy\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeFocused();
+  await expect(page.locator("#route-status")).toHaveText("Privacy");
+
+  await page.getByRole("link", { name: "Terms" }).click();
+  await expect(page).toHaveURL(/\/terms\/$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeFocused();
+  await expect(page.locator("#route-status")).toHaveText("Terms");
+
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeFocused();
+  await page.goForward();
+  await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeFocused();
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Demo" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Inspect the sample mount mismatch" })).toBeFocused();
+  await expect(page.locator("#route-status")).toHaveText("Inspect the sample mount mismatch");
 });
 
 test("forward, back, and fragment navigation focus the destination heading", async ({ page }) => {
@@ -119,9 +143,32 @@ test("fits the viewport and keeps controls reachable", async ({ page }, testInfo
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByRole("link", { name: "Try it with sample data" }).click();
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
   await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeInViewport();
-  await page.getByRole("button", { name: "Check mount permissions" }).scrollIntoViewIfNeeded();
-  await expect(page.getByRole("button", { name: "Check mount permissions" })).toBeVisible();
+  for (const selector of ["#result-title", "#mapped-id", "#access-id"]) {
+    const box = await page.locator(selector).boundingBox();
+    expect(box, `${selector} must be rendered`).not.toBeNull();
+    expect(box!.y, `${selector} must start in the first 390x844 sample viewport`).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height, `${selector} must end in the first 390x844 sample viewport`).toBeLessThanOrEqual(844);
+  }
+  const bannerRows = await page.locator(".demo-banner > *").evaluateAll((elements) =>
+    new Set(elements.map((element) => Math.round(element.getBoundingClientRect().top))).size
+  );
+  expect(bannerRows).toBeLessThanOrEqual(2);
+});
+
+test("copy failure keeps the action label and explains manual recovery", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error("blocked")) }
+    });
+  });
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Copy install command" });
+  await button.click();
+  await expect(button).toHaveText("Copy install command");
+  await expect(page.locator("#copy-feedback")).toHaveText("Couldn’t copy. Select the command and copy it manually.");
 });
 
 test("turns the adapter comparison into labelled rows at 390px", async ({ page }, testInfo) => {
@@ -285,6 +332,7 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-1");
+    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-2");
+    await expect(page.locator("#route-status")).toHaveAttribute("aria-live", "polite");
   }
 });

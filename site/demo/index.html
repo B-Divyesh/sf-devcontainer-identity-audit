@@ -24,8 +24,9 @@
   </head>
   <body data-demo="true">
     <a class="skip-link" href="#main">Skip to main content</a>
+    <p class="route-status" id="route-status" aria-live="polite" aria-atomic="true"></p>
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Mount Identity Audit home"><span class="brand-mark" aria-hidden="true">M↔I</span><span>Mount identity audit</span></a>
+      <a class="brand" href="/" aria-label="Mount Identity Audit home"><span class="brand-mark" aria-hidden="true"></span><span>Mount identity audit</span></a>
       <nav aria-label="Primary navigation"><a href="/demo/" aria-current="page">Demo</a><a href="/#how">How it works</a><a href="/privacy/">Privacy</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit">Source (GitHub)</a></nav>
     </header>
     <aside class="demo-banner" aria-label="Demo controls">
@@ -53,7 +54,7 @@
             <small id="mode-hint">Three or four octal digits, such as 0755 or 0775.</small>
           </fieldset>
           <fieldset>
-            <legend>Container process</legend>
+            <legend>Remote user</legend>
             <div class="field-pair">
               <label>Remote UID <input id="remote-uid" name="remoteUid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
               <label>Remote GID <input id="remote-gid" name="remoteGid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
@@ -87,7 +88,7 @@
           <div class="result-head"><span class="status-stamp" id="status-stamp">Ready</span><div><p class="result-kicker">Permission report</p><h2 id="result-title">Waiting for an identity</h2></div></div>
           <p id="result-summary">The sample report will show the effective host identity and permission branch.</p>
           <dl class="identity-grid" id="identity-grid" hidden>
-            <div><dt>Container</dt><dd id="container-id">—</dd></div><div><dt>Maps to host</dt><dd id="mapped-id">—</dd></div><div><dt>Workspace</dt><dd id="workspace-id">—</dd></div><div><dt>Access</dt><dd id="access-id">—</dd></div>
+            <div><dt>Remote user</dt><dd id="container-id">—</dd></div><div><dt>Maps to host</dt><dd id="mapped-id">—</dd></div><div><dt>Workspace</dt><dd id="workspace-id">—</dd></div><div><dt>Access</dt><dd id="access-id">—</dd></div>
           </dl>
           <div class="remedy" id="remedy" hidden><p class="result-kicker">Safe next step</p><p id="remedy-text"></p></div>
         </section>
@@ -95,9 +96,9 @@
     </main>
 
     <footer>
-      <div><span class="brand-mark" aria-hidden="true">M↔I</span><p>Local identity evidence for mounted workspaces.</p></div>
+      <div><span class="brand-mark" aria-hidden="true"></span><p>Check whether a remote user can write to a mounted workspace.</p></div>
       <nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit/blob/main/LICENSE">MIT license</a></nav>
-      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · polish-1</p>
+      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · polish-2</p>
     </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>

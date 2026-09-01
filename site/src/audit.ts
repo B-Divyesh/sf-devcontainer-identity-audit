@@ -86,20 +86,20 @@ export function evaluateAudit(input: AuditInput): DemoAuditResult {
   const writable = writableByMode && !input.readOnly;
   const verdict = readable && writable ? "pass" : "fail";
 
-  let summary = "The mapped identity can read, write, and traverse this workspace.";
+  let summary = "The mapped remote user can read, write, and traverse this workspace.";
   let remedy = "No ownership change is indicated. Confirm with the CLI against the real runtime map.";
   if (input.readOnly) {
     summary = "The mount is explicitly read-only, regardless of matching ownership.";
     remedy = "Remove the read-only mount flag only if workspace edits are intended.";
   } else if (!readable) {
-    summary = "The mapped identity cannot read and traverse the workspace directory.";
+    summary = "The mapped remote user cannot read and traverse the workspace directory.";
     remedy = input.runtime === "podman" && input.userns === "default"
-      ? "Use Podman keep-id so the developer identity maps back to the host owner."
+      ? "Use Podman keep-id so the remote user maps back to the host owner."
       : "Choose a remote UID:GID that maps to the workspace owner or intended project group.";
   } else if (!writable) {
-    summary = "The mapped identity can read this directory but cannot create or edit entries.";
+    summary = "The mapped remote user can read this directory but cannot create or edit entries.";
     remedy = input.runtime === "podman" && input.userns === "default"
-      ? "Use Podman keep-id so the developer identity maps back to the host owner."
+      ? "Use Podman keep-id so the remote user maps back to the host owner."
       : "Match the workspace owner or deliberately grant group write access on the host.";
   }
 

@@ -1,4 +1,5 @@
 import { AuditInputError, evaluateAudit, type AuditInput, type Runtime, type UserNamespace } from "./audit";
+import { moveFocusToHeading } from "./route";
 
 const select = <T extends Element>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -99,6 +100,11 @@ select("#load-safe").addEventListener("click", () => {
 const isQueryDemo = new URLSearchParams(window.location.search).get("demo") === "1";
 const isDemo = document.body.dataset.demo === "true" || isQueryDemo;
 
+if (isDemo) {
+  document.body.classList.add("is-demo-mode");
+  document.documentElement.classList.add("demo-route");
+}
+
 document.querySelector<HTMLButtonElement>("#reset-demo")?.addEventListener("click", () => {
   loadMismatchSample();
   result.focus();
@@ -130,14 +136,13 @@ if (isDemo) {
 
 document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
-    const label = button.querySelector<HTMLElement>(".copy-label");
+    const feedback = document.querySelector<HTMLElement>("#copy-feedback");
     try {
       await navigator.clipboard.writeText(button.dataset.copy ?? "");
-      if (label) label.textContent = "Install command copied";
+      if (feedback) feedback.textContent = "Install command copied.";
     } catch {
-      if (label) label.textContent = "Select command";
+      if (feedback) feedback.textContent = "Couldn’t copy. Select the command and copy it manually.";
     }
-    window.setTimeout(() => { if (label) label.textContent = "Copy install command"; }, 1800);
   });
 });
 
@@ -158,9 +163,7 @@ function focusRouteHeading(force = false): void {
     "#how": "#method-title"
   };
   const target = document.querySelector<HTMLElement>(hashTargets[window.location.hash] ?? "h1");
-  if (target) {
-    window.requestAnimationFrame(() => target.focus({ preventScroll: Boolean(window.location.hash) }));
-  }
+  if (target) moveFocusToHeading(target, Boolean(window.location.hash));
 }
 
 window.addEventListener("hashchange", () => focusRouteHeading());

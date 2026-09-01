@@ -7,6 +7,7 @@
 - Entry point: select **Try it with sample data** on the home page.
 - Sample: workspace owner, host caller, and remote user `1000:1000`; mode `0755`; subordinate ranges starting at `100000`; and rootless Podman's default map.
 - Expected first result: `FAIL`; the process maps to host `100999:100999` and cannot write the workspace.
+- Mobile result: at 390×844, the result title, mapped host identity, and access branch appear in the first viewport after the one click.
 - Reset: select **Reset demo** in the persistent banner.
 - Exit: select **Open blank browser check** to return to the normal calculator.
 - Storage namespace: none. State exists only in the page DOM. Demo mode never reads or writes real browser storage.

@@ -35,9 +35,9 @@ prints that path and audits the copy. The known write mismatch returns `FAIL`
 with exit code `1`, the same as a project with a confirmed mismatch.
 
 The browser sample also accepts the host caller identity and the allocated
-`/etc/subuid` and `/etc/subgid` range starts. These values let it distinguish
-the identity kept by Podman `keep-id` from other remote users, which still map
-through the subordinate ranges. The CLI reads the live runtime map instead.
+`/etc/subuid` and `/etc/subgid` range starts. Podman `keep-id` preserves the host
+caller’s ID. Other remote users map through the subordinate ID ranges. The CLI
+reads the live runtime map instead.
 
 ## Usage
 
@@ -134,8 +134,8 @@ running a container. The audit returns `UNKNOWN` and requests
 `--remote-user UID:GID`; it never invents a same-number group. Linux reserves
 ID `4294967295`, so the CLI rejects it as `UNKNOWN`.
 
-POSIX ACLs, security labels, remote filesystems, and startup mutations remain
-outside the v1 permission model. Every detailed report states these limits.
+Version 1 does not check POSIX ACLs, security labels, remote filesystems, or
+changes made during startup. Every detailed report states these limits.
 Build-backed configurations without an explicit numeric user also return
 `UNKNOWN`. The CLI never trusts a possibly stale image tag as current build
 evidence.
@@ -168,8 +168,7 @@ cargo build --release
 npm run build:site
 ```
 
-Prepare the unpublished registry artifact with `cargo package`; publishing is
-intentionally left to the Param Factory.
+Run `cargo package` to prepare the crate. Param Factory handles publishing.
 
 ## Privacy and security
 

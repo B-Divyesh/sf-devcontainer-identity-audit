@@ -109,12 +109,21 @@ test("CLI demo uses an isolated bundled sample @claim:cli-demo", () => {
 });
 
 test("home opens the working browser sample in one click @claim:browser-demo", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("link", { name: "Try it with sample data" }).click();
   await expect(page).toHaveURL(/\/?demo=1#demo$/);
   await expect(page.getByText("Demo — sample data, nothing is saved")).toBeVisible();
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await expect(page.locator("#mapped-id")).toContainText("100999:100999");
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+  const firstViewport = await page.locator("#result-title, #mapped-id, #access-id").evaluateAll((elements) =>
+    elements.every((element) => {
+      const box = element.getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= 844;
+    })
+  );
+  expect(firstViewport).toBe(true);
   await expect(page.getByRole("button", { name: "Reset demo" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open blank browser check" })).toBeVisible();
 });

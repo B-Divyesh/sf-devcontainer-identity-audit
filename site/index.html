@@ -24,9 +24,10 @@
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
+    <p class="route-status" id="route-status" aria-live="polite" aria-atomic="true"></p>
     <header class="site-header">
       <a class="brand" href="/" aria-label="Mount Identity Audit home">
-        <span class="brand-mark" aria-hidden="true">M↔I</span>
+        <span class="brand-mark" aria-hidden="true"></span>
         <span>Mount identity audit</span>
       </a>
       <nav aria-label="Primary navigation">
@@ -68,10 +69,11 @@
               <span class="copy-label">Copy install command</span>
             </button>
           </div>
+          <p class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></p>
         </div>
         <figure class="hero-art">
           <img src="/mount-ledger-6b7fee8c.webp" width="1200" height="800" alt="A halftone technical cutaway showing a host computer and container workspace joined through aligned identity tags." fetchpriority="high" />
-          <figcaption>Host identity and container identity meet at one bind mount.</figcaption>
+          <figcaption>A bind mount maps the container identity to a host identity.</figcaption>
         </figure>
       </section>
 
@@ -101,7 +103,7 @@
             </fieldset>
 
             <fieldset>
-              <legend>Container process</legend>
+              <legend>Remote user</legend>
               <div class="field-pair">
                 <label>Remote UID <input id="remote-uid" name="remoteUid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
                 <label>Remote GID <input id="remote-gid" name="remoteGid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
@@ -150,7 +152,7 @@
             </div>
             <p id="result-summary">Run the sample mismatch or load the safe example. The report will explain the effective host identity and exact permission branch.</p>
             <dl class="identity-grid" id="identity-grid" hidden>
-              <div><dt>Container</dt><dd id="container-id">—</dd></div>
+              <div><dt>Remote user</dt><dd id="container-id">—</dd></div>
               <div><dt>Maps to host</dt><dd id="mapped-id">—</dd></div>
               <div><dt>Workspace</dt><dd id="workspace-id">—</dd></div>
               <div><dt>Access</dt><dd id="access-id">—</dd></div>
@@ -169,7 +171,7 @@
           <h2 id="method-title" tabindex="-1">Check the configuration, map, and workspace</h2>
         </div>
         <ol class="method-list">
-          <li><span class="step-index">A</span><h3>Read config</h3><p>Find the remote user and workspace bind in JSONC or Compose metadata.</p><code>devcontainer.json → compose.yml</code></li>
+          <li><span class="step-index">A</span><h3>Read the configuration</h3><p>Find the remote user and workspace bind in JSONC or Compose metadata.</p><code>devcontainer.json → compose.yml</code></li>
           <li><span class="step-index">B</span><h3>Read the runtime identity map</h3><p>Ask Docker or Podman for runtime metadata and rootless user namespace ranges.</p><code>podman unshare … uid_map</code></li>
           <li><span class="step-index">C</span><h3>Read workspace ownership and mode</h3><p>Compare the effective host UID/GID with owner, group, and other permission bits.</p><code>0755 · 1000:1000</code></li>
         </ol>
@@ -221,9 +223,9 @@ The mapped remote identity can read but cannot write the workspace.</code></pre>
     </main>
 
     <footer>
-      <div><span class="brand-mark" aria-hidden="true">M↔I</span><p>Local identity evidence for mounted workspaces.</p></div>
+      <div><span class="brand-mark" aria-hidden="true"></span><p>Check whether a remote user can write to a mounted workspace.</p></div>
       <nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit/blob/main/LICENSE">MIT license</a></nav>
-      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · polish-1</p>
+      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · polish-2</p>
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

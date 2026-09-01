@@ -14,6 +14,8 @@
     "test:site": "vitest run --config site/vitest.config.ts",
     "test:e2e": "playwright test",
     "test:claims": "npm run build:cli && npm run build:site && playwright test site/e2e/claims.spec.ts --project=chromium",
+    "copy:audit": "node scripts/generate-copy-audit.mjs",
+    "copy:audit:check": "node scripts/generate-copy-audit.mjs --check",
     "typecheck": "tsc -p site/tsconfig.json",
     "lint": "cargo fmt --all -- --check && cargo clippy --all-targets --all-features -- -D warnings && npm run typecheck"
   },

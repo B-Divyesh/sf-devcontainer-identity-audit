@@ -1,36 +1,49 @@
-# Mount Identity Audit — verification 8 handoff
+# Mount Identity Audit — review 1 handoff
 
-## Status: PASS
+## Status: FAIL
 
-Candidate `680a01b7b9d31610f52d0929e8815613ed9ff1ea` passes independent product QA at <https://devcontainer-identity-audit.sociobot.in> on 1 September 2026 UTC. No release-blocking defects were found. Full evidence is in `.factory/verification-8.md`.
+Adversarial first-read review 1 was completed against commit
+`190a4a1fe158c9728d9c38c7eeb466898cac8886` and the live site on 1 September
+2026 UTC. The full report is `.factory/review-1.md`.
 
-## What was verified
+## What was done
 
-- All 15 exact claim commands in `.factory/claims.json` passed independently after `npm ci`.
-- `npm test`, `npm run lint`, `npm audit --audit-level=low`, exact `npm run build`, and `cargo package --allow-dirty --no-verify` passed.
-- A fresh temporary consumer installed the CLI, checked its public help/version, and exercised `--demo`; the expected sample `FAIL` returned exit code 1.
-- The live desktop and 390 px mobile Playwright suite passed. It covers keyboard-only use, focus, reduced motion, mobile reflow and target sizes, offline reload, and route behavior. Axe found no serious or critical findings.
-- The live browser flow made only same-origin static GETs; it set no cookies and wrote no browser storage. Security and cache headers are present.
-- The checked 15 deployed product files are byte-identical to this candidate build.
-- The browser and packed CLI agree on the non-caller rootless Podman `keep-id` case: remote `2000:2000` maps to `102000:102000` and returns `FAIL`. Invalid input recovery restores the complete safe sample.
-- Lighthouse mobile: Performance 98, Accessibility 100, Best Practices 100, SEO 100; LCP 2.0 s, TBT 120 ms, CLS 0.
+- Checked the cold first screen in fresh 390×844 and 1440×900 browser contexts.
+- Checked the one-click sample, reset, exit, offline behavior, request log, and
+  empty cookie/Web Storage/IndexedDB state.
+- Listed and counted every landing-page and README sentence or prose line.
+- Ran all 15 exact claim commands independently from a fresh clone.
+- Ran `npm test`, `npm run lint`, `npm run build`, the full suite against the
+  live URL, the factory URL verifier, route metadata checks, and a complete link
+  crawl.
+- Checked every earlier verification defect against current code and live
+  behavior.
+- Confirmed nine core live files match the clean-clone build byte for byte.
 
-## Commands
+## Result
+
+The first read, demo, registered tests, privacy behavior, accessibility checks,
+build, routing, links, and visual identity all work. The verdict remains FAIL
+because the earlier hero-cache correction is incomplete. The hero still sends
+`Cache-Control: public, must-revalidate, max-age=30`. The review also records
+route-focus, plain-language, terminology, heading, button-label, unlisted-claim,
+and copy-audit count findings.
+
+## How to verify
 
 ```sh
 npm ci
 npm test
 npm run lint
-npm audit --audit-level=low
 npm run build
-cargo package --allow-dirty --no-verify
-npm run test:claims -- --grep @claim:browser-parity
 PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npx playwright test
 ```
 
-Run each `test` value in `.factory/claims.json` separately to repeat the full
-claim audit.
+Run every `test` value in `.factory/claims.json` separately from a fresh clone.
+Then check the live hero response header and confirm route changes focus the new
+heading.
 
-## Known gaps and next steps
+## Product changes
 
-No release-blocking product gaps remain. Docker and Podman programs are unavailable in this worker, so their read-only runtime behavior is checked through deterministic adapters in the CLI integration and claim suites. Publishing remains a factory release action. This verifier did not modify product code or deployment resources.
+No product code, deployment configuration, infrastructure, DNS, storage, or
+external resource was modified. Only this review and handoff were written.

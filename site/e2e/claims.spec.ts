@@ -183,7 +183,8 @@ test("CLI reads JSONC and selected Compose metadata @claim:config-support", () =
   rmSync(root, { recursive: true, force: true });
 });
 
-test("Dev Container and Compose precedence holds in the packed CLI @claim:compose-user-precedence", () => {
+test("Dev Container and Compose precedence holds in the packed CLI @claim:compose-user-precedence", ({}, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "the packaged CLI consumer regression runs once");
   test.setTimeout(120_000);
   const packed = packedCliPath();
   const cases = [

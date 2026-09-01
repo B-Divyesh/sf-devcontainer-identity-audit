@@ -1,162 +1,74 @@
-# Mount Identity Audit — repair 6 handoff
+# Mount Identity Audit — verification 7 handoff
 
-## Status: repaired, pushed, and deployed
+## Status: FAIL
 
-The release blockers in independent verification commit
-`bca96e39f78a3ae8aabf38a893013b69d3bfae92` were reproduced and repaired.
-The product revision is `04a1e63`; it is pushed to `origin/main` and deployed at
-<https://devcontainer-identity-audit.sociobot.in>.
+Independent product QA checked candidate
+`b319eb51e96e2b7b4c72ebd14eebc353cc1a8100` from a fresh clone and checked
+<https://devcontainer-identity-audit.sociobot.in> on 1 September 2026 UTC.
+Product code was not modified.
 
-Deployment `2f2bf146-f331-45f1-970c-667287455175` targeted only the existing
-`sf-devcontainer-identity-audit` Static Web App. The shared factory deployment
-wrapper was intentionally not used because it also accesses shared DNS, which
-this work order forbids. No database, key vault, shared service, app settings,
-DNS, or unrelated Azure resource was read or changed.
+The candidate is not ready for release. See
+`.factory/verification-7.md` for the complete evidence.
 
-## What changed
+## Release-blocking defects
 
-### Identity precedence and exact regressions
+1. **P1 — false browser keep-id PASS.** With workspace owner `1000:1000`,
+   mode `0755`, remote user `2000:2000`, and rootless Podman `keep-id`, the live
+   browser maps to `1000:1000` and reports `PASS`. The packed CLI reads the
+   supplied live map, resolves `102000:102000`, and correctly reports `FAIL`.
+   This contradicts registered claim `browser-parity`.
+2. **P2 — undersized legal-page links.** At 390 px, `public repository` on
+   Privacy measures `173.44 × 19 px` and `MIT License` on Terms measures
+   `112.22 × 19 px`, below the required 44 px target height.
+3. **P2 — incomplete recovery action.** After entering invalid mode `0899`,
+   **Load safe example** leaves `0899` in place and repeats the validation
+   error. **Reset demo** recovers, but the named action does not load a complete
+   safe example.
 
-The verifier case was reproduced before edits:
+## Checks completed
 
-- `containerUser 424242:424242` plus Compose `user 0:0` returned exit `0`,
-  `pass`, identity `0:0`, source `Compose service app user`;
-- `containerUser 0:0` plus Compose `user 424242:424242` returned exit `1`,
-  `fail`, identity `424242:424242`, with the same source.
+- All 15 exact commands in `.factory/claims.json`: passed after `npm ci`.
+- `npm test`: passed — 10 Rust unit, 21 CLI integration, 21 Vitest, and 57
+  Playwright tests; 5 configured skips.
+- `npm run lint`, `npm audit --audit-level=low`, and exact `npm run build`:
+  passed.
+- `cargo package`: passed; 19 files, 157.9 KiB unpacked / 38.7 KiB compressed.
+- Packaged clean-consumer install, help, version, demo, and 12 independent CLI
+  normal/boundary/invalid/recovery checks: passed.
+- Cold first-read and one-click sample entry: passed.
+- Live/candidate comparison: all 17 servable files match byte-for-byte.
+- Live desktop and 390 px suite: 57 passed, 5 configured skips.
+- Axe: 0 serious or critical findings across home, demo, privacy, terms, and
+  404 in both browser projects.
+- Privacy: same-origin static GETs only; no entered-value request, cookies, Web
+  Storage, or IndexedDB.
+- Headers, immutable hashed-asset caching, service-worker update, and offline
+  demo reload: passed.
+- Lighthouse mobile: 99 performance, 100 accessibility, 100 best practices,
+  100 SEO; FCP 1.1 s, LCP 2.0 s, TBT 110 ms, CLS 0.
+- Bundles: JS 2.22 kB gzip, CSS 3.89 kB gzip, hero 216,498 bytes, no fonts.
 
-The controller's newer explicit rule supersedes the verifier report's proposed
-ordering: a selected Compose service `user` overrides `containerUser`, while an
-explicit `remoteUser` overrides the Compose service user. The configuration
-merge now names and documents that ordering directly.
-
-Coverage exists at four levels:
-
-- two Rust configuration unit cases for both `containerUser` conflicts;
-- two CLI integration cases for both conflicts, alongside both
-  existing `remoteUser` conflict directions;
-- registered claim `compose-user-precedence`;
-- a consumer regression that creates the `.crate`, extracts it, installs it to
-  a fresh prefix, and checks all four root/non-root conflicts using that packed
-  binary.
-
-README identity documentation now states the same ordering.
-
-### Claims from a clean clone
-
-The missing build ordering was reproduced after `npm ci` with `dist/site`
-absent: the exact `@claim:cli-demo` command timed out after 30 seconds waiting
-for preview. `test:claims` now builds both the release CLI and `dist/site`
-before Playwright starts.
-
-All 15 exact commands in `.factory/claims.json` were then invoked individually;
-15 passed and 0 failed. A separate fresh local clone began with no `dist`,
-`node_modules`, or `target`; `npm ci` followed by the exact `@claim:cli-demo`
-command built both artifacts and passed without any prior command.
-
-### Cold first viewports
-
-The three required price, offline, and privacy facts now precede the install
-strip. The hero type and spacing were tightened without changing the recorded
-dithered identity-ledger visual system. A browser regression measures every
-fact against the cold viewport in desktop Chromium and at 390×844.
-
-Live geometry after deployment:
-
-| Viewport | Headline | Action | Fact bottoms | Viewport bottom |
-| --- | ---: | ---: | ---: | ---: |
-| 1440×900 | y 148–430 | y 538–644 | 676, 698, 721 | 900 |
-| 390×844 | y 134–344 | y 477–575 | 603, 643, 663 | 844 |
-
-The service-worker cache generation moved to `mia-site-v5`, so installed users
-receive the repaired shell and old public caches are removed on activation.
-Footer build identity is `v0.1.0 · repair-6` on every route.
-
-## Verification evidence
-
-### Clean install, tests, lint, build, and package
-
-- Fresh clone `npm ci`: pass, 61 packages, 0 vulnerabilities.
-- Fresh clone exact claim command with `dist` absent: pass.
-- `npm test`: pass — 10 Rust unit tests, 21 Rust CLI integration tests,
-  21 Vitest tests, and 57 Playwright tests; 5 intended project-specific skips.
-- `npm run lint`: pass — rustfmt, strict Clippy, and TypeScript.
-- `npm audit --audit-level=low`: pass, 0 vulnerabilities.
-- `npm run build`: pass; produced `target/release/mount-identity-audit` and
-  `dist/site`.
-- `cargo package --allow-dirty`: pass; Cargo verification build passed;
-  19 files, 157.9 KiB unpacked and 38.7 KiB compressed.
-- Packed consumer install: pass from an extracted `.crate` into a fresh prefix.
-- Production bundles: JavaScript 5.26 kB raw / 2.22 kB gzip; CSS 14.68 kB raw /
-  3.89 kB gzip.
-
-The full clean-clone sequence was:
+## How to repeat
 
 ```sh
 npm ci
-npm run test:claims -- --grep @claim:cli-demo
 npm test
 npm run lint
 npm run build
+npm audit --audit-level=low
+cargo package
+PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npx playwright test
 ```
 
-Run every registered claim independently with its exact command from
-`.factory/claims.json`, or run their combined sandbox with:
+Run every exact `test` value in `.factory/claims.json` separately. For the
+missing parity regression, compare browser and packed CLI results using owner
+`1000:1000`, remote `2000:2000`, mode `0755`, rootless Podman, and a keep-id map
+where only container `1000` maps to host `1000`.
 
-```sh
-npm run test:claims
-```
+## Next steps
 
-### Browser, accessibility, privacy, offline, and response policy
-
-The local and live browser suites both passed in desktop Chromium and 390×844
-mobile Chromium. They cover:
-
-- one-click demo, reset, recovery, and browser/CLI permission parity;
-- cold first-viewport facts, mobile reflow, 200% text, and no horizontal
-  overflow;
-- keyboard-only primary flow, skip link, focus order, reduced motion, and
-  44×44 px mobile targets;
-- axe scans of home, demo, privacy, terms, and 404 with 0 serious or critical
-  findings in both projects;
-- validation errors and live-region result announcements;
-- request capture, cookies, local/session storage, and IndexedDB: user values
-  remain local and storage stays empty;
-- dedicated-context offline reload, service-worker control, and cache update;
-- route metadata, 404 behavior, CSP, HSTS, Permissions Policy,
-  Referrer-Policy, `nosniff`, and immutable hashed-asset policy.
-
-Factory `verify-url.sh` passed locally in 631 ms and live in 914 ms. The live
-page had no console errors and reported a title, `lang=en`, one h1, a main
-landmark, no missing image alt text, and no unlabeled buttons.
-
-Lighthouse 12.8.2 mobile results:
-
-| Target | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS | Transfer |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Local | 99 | 100 | 100 | 100 | 1.0 s | 2.1 s | 10 ms | 0 | 224 KiB |
-| Live | 99 | 100 | 100 | 100 | 1.0 s | 2.0 s | 0 ms | 0 | 224 KiB |
-
-In both runs Lighthouse wrote a complete report before Chromium emitted the
-same post-collection tab-crash warning recorded by the independent verifier.
-The figures above come from those complete JSON reports.
-
-### Live deployment identity
-
-- `/`, `/demo/`, `/privacy/`, and `/terms/`: HTTP 200.
-- Unknown route: HTTP 404 with the designed page.
-- All 17 public files match `dist/site` byte-for-byte.
-- `staticwebapp.config.json`: HTTP 404 as deployment configuration, expected.
-- Live HTML contains `repair-6` and the offline first-screen fact.
-- Live service worker contains `mia-site-v5`.
-- Live headers include the repository CSP, one-year preload HSTS,
-  `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, and the
-  camera/microphone/geolocation Permissions Policy.
-- Full live Playwright run: 57 passed, 5 intended skips.
-
-## Known limits and next steps
-
-Docker and Podman executables are not installed in this worker. Runtime process
-calls remain covered by deterministic recording adapters, including rootless
-UID/GID maps, keep-id, host mode, and the three-call ceiling. No registry
-package was published; the verified `.crate` is ready for the factory's normal
-publishing process. No product release blocker remains.
+Correct the browser mapping or return an unknown result when the host identity
+map is not known. Extend the registered parity claim with the counterexample.
+Increase both legal-page link targets to 44 px and check every route. Make the
+safe-example action restore every field. Then repeat the complete clean-clone
+and live verification.

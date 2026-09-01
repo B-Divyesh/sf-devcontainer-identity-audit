@@ -86,6 +86,8 @@ source PNG is not shipped.
 - License: original work generated for this MIT-licensed project, 2026-08-28.
 - CSS halftone fields and registration marks are hand-authored, deterministic
   gradients used as layout texture; they are not stock assets.
+- The wordmark's paired-circle identity-link symbol is hand-drawn in CSS. It
+  replaces decorative text so voice control sees only the visible product name.
 
 Derived release assets keep the same provenance. `social-card.webp` is a
 deterministic 1200×630 center crop of `mount-ledger-6b7fee8c.webp` for link previews.

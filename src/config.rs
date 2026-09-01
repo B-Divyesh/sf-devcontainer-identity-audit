@@ -39,12 +39,13 @@ pub fn load(project: &Path, explicit: Option<&Path>) -> Result<ProjectConfig, St
 
     let base = project_root_for(&path);
     let explicit_remote_user = string_value(json.get("remoteUser"));
+    let container_user = string_value(json.get("containerUser"));
     let remote_user = explicit_remote_user
         .clone()
-        .or_else(|| string_value(json.get("containerUser")));
+        .or_else(|| container_user.clone());
     let remote_user_source = if explicit_remote_user.is_some() {
         "devcontainer remoteUser"
-    } else if json.get("containerUser").is_some() {
+    } else if container_user.is_some() {
         "devcontainer containerUser"
     } else {
         "image default"
@@ -81,12 +82,16 @@ pub fn load(project: &Path, explicit: Option<&Path>) -> Result<ProjectConfig, St
             .ok_or_else(|| "dockerComposeFile is set but `service` is missing.".to_string())?;
         for compose in compose_files {
             let compose_path = resolve_relative(path.parent().unwrap_or(&base), &compose);
+            // A selected Compose service defines the container process user. Dev Container
+            // `remoteUser` still overrides it for the intended editor process, while
+            // `containerUser` is only the fallback when Compose has no service user.
+            let compose_user_is_authoritative = explicit_remote_user.is_none();
             merge_compose(
                 &mut result,
                 &compose_path,
                 service,
                 json.get("workspaceFolder").and_then(|v| v.as_str()),
-                explicit_remote_user.is_some(),
+                compose_user_is_authoritative,
             )?;
         }
     }
@@ -99,7 +104,7 @@ fn merge_compose(
     path: &Path,
     service_name: &str,
     workspace_folder: Option<&str>,
-    has_explicit_remote_user: bool,
+    compose_user_is_authoritative: bool,
 ) -> Result<(), String> {
     let source = fs::read_to_string(path)
         .map_err(|error| format!("Cannot read Compose file {}: {error}", path.display()))?;
@@ -115,7 +120,7 @@ fn merge_compose(
             )
         })?;
 
-    if !has_explicit_remote_user && let Some(user) = service.get("user").and_then(yaml_scalar) {
+    if compose_user_is_authoritative && let Some(user) = service.get("user").and_then(yaml_scalar) {
         result.remote_user = Some(user);
         result.remote_user_source = format!("Compose service {service_name} user");
     }
@@ -333,6 +338,42 @@ services:
             loaded.workspace.unwrap().canonicalize().unwrap(),
             temp.path().canonicalize().unwrap()
         );
+    }
+
+    fn load_compose_user_conflict(container_user: &str, compose_user: &str) -> ProjectConfig {
+        let temp = tempfile::tempdir().unwrap();
+        fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+        fs::write(
+            temp.path().join(".devcontainer/devcontainer.json"),
+            format!(
+                r#"{{
+                    dockerComposeFile: "compose.yml",
+                    service: "app",
+                    containerUser: "{container_user}"
+                }}"#
+            ),
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join(".devcontainer/compose.yml"),
+            format!("services:\n  app:\n    user: \"{compose_user}\"\n"),
+        )
+        .unwrap();
+        load(temp.path(), None).unwrap()
+    }
+
+    #[test]
+    fn root_compose_user_overrides_non_root_container_user() {
+        let loaded = load_compose_user_conflict("424242:424242", "0:0");
+        assert_eq!(loaded.remote_user.as_deref(), Some("0:0"));
+        assert_eq!(loaded.remote_user_source, "Compose service app user");
+    }
+
+    #[test]
+    fn non_root_compose_user_overrides_root_container_user() {
+        let loaded = load_compose_user_conflict("0:0", "424242:424242");
+        assert_eq!(loaded.remote_user.as_deref(), Some("424242:424242"));
+        assert_eq!(loaded.remote_user_source, "Compose service app user");
     }
 
     #[test]

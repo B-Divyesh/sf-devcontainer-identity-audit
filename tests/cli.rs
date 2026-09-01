@@ -115,7 +115,8 @@ fn reserved_linux_identity_is_unknown_in_podman_host_mode() {
 }
 
 fn run_compose_identity_precedence_case(
-    remote_user: &str,
+    devcontainer_property: &str,
+    devcontainer_user: &str,
     compose_user: &str,
 ) -> std::process::Output {
     let temp = tempfile::tempdir().unwrap();
@@ -126,7 +127,7 @@ fn run_compose_identity_precedence_case(
             r#"{{
                 dockerComposeFile: "compose.yml",
                 service: "app",
-                remoteUser: "{remote_user}",
+                {devcontainer_property}: "{devcontainer_user}",
                 workspaceFolder: "/work"
             }}"#
         ),
@@ -150,7 +151,7 @@ fn run_compose_identity_precedence_case(
 
 #[test]
 fn explicit_remote_user_wins_over_root_compose_user() {
-    let output = run_compose_identity_precedence_case("424242:424242", "0:0");
+    let output = run_compose_identity_precedence_case("remoteUser", "424242:424242", "0:0");
 
     assert_eq!(output.status.code(), Some(1));
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -164,7 +165,7 @@ fn explicit_remote_user_wins_over_root_compose_user() {
 
 #[test]
 fn explicit_root_remote_user_wins_over_non_root_compose_user() {
-    let output = run_compose_identity_precedence_case("0:0", "424242:424242");
+    let output = run_compose_identity_precedence_case("remoteUser", "0:0", "424242:424242");
 
     assert_eq!(output.status.code(), Some(0));
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -174,6 +175,32 @@ fn explicit_root_remote_user_wins_over_non_root_compose_user() {
     assert_eq!(json["identity"]["source"], "devcontainer remoteUser");
     assert_eq!(json["workspace"]["readable"], true);
     assert_eq!(json["workspace"]["writable"], true);
+}
+
+#[test]
+fn root_compose_user_overrides_non_root_container_user() {
+    let output = run_compose_identity_precedence_case("containerUser", "424242:424242", "0:0");
+
+    assert_eq!(output.status.code(), Some(0));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "pass");
+    assert_eq!(json["identity"]["container_uid"], 0);
+    assert_eq!(json["identity"]["container_gid"], 0);
+    assert_eq!(json["identity"]["source"], "Compose service app user");
+    assert_eq!(json["workspace"]["writable"], true);
+}
+
+#[test]
+fn non_root_compose_user_overrides_root_container_user() {
+    let output = run_compose_identity_precedence_case("containerUser", "0:0", "424242:424242");
+
+    assert_eq!(output.status.code(), Some(1));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "fail");
+    assert_eq!(json["identity"]["container_uid"], 424242);
+    assert_eq!(json["identity"]["container_gid"], 424242);
+    assert_eq!(json["identity"]["source"], "Compose service app user");
+    assert_eq!(json["workspace"]["writable"], false);
 }
 
 fn assert_uid_only_is_unknown(config: &str, extra_args: &[&str], runtime_user: Option<&str>) {

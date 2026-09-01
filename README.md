@@ -120,8 +120,9 @@ Those calls use `info`, `image inspect`, or rootless Podman identity maps.
 - host owner/group/mode and read-only mount declarations.
 
 An explicit Dev Container `remoteUser` is the intended editor identity. It
-stays authoritative when a Compose service declares a different `user`.
-Compose `user` is the fallback when `remoteUser` is absent.
+stays authoritative when a selected Compose service declares a different
+`user`. Otherwise, that Compose service `user` overrides `containerUser`.
+The CLI uses `containerUser` only when neither of those values is present.
 
 Named image users and UID-only values do not prove a primary GID without
 running a container. The audit returns `UNKNOWN` and requests

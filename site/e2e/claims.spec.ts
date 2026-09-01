@@ -32,6 +32,39 @@ function runCli(args: string[], env: NodeJS.ProcessEnv = {}) {
   });
 }
 
+function packedCliPath(): { path: string; sandbox: string } {
+  const packageRun = spawnSync("cargo", ["package", "--allow-dirty", "--no-verify"], {
+    cwd: repo,
+    encoding: "utf8"
+  });
+  expect(packageRun.status, packageRun.stderr).toBe(0);
+
+  const crate = join(repo, "target/package/mount-identity-audit-0.1.0.crate");
+  expect(existsSync(crate), "cargo package must produce the consumer artifact").toBe(true);
+  const sandbox = mkdtempSync(join(tmpdir(), "mia-packed-claim-"));
+  const sourceRoot = join(sandbox, "source");
+  const installRoot = join(sandbox, "install");
+  mkdirSync(sourceRoot, { recursive: true });
+  const unpack = spawnSync("tar", ["-xzf", crate, "-C", sourceRoot], { encoding: "utf8" });
+  expect(unpack.status, unpack.stderr).toBe(0);
+  const install = spawnSync(
+    "cargo",
+    [
+      "install",
+      "--path", join(sourceRoot, "mount-identity-audit-0.1.0"),
+      "--root", installRoot,
+      "--target-dir", join(repo, "target"),
+      "--locked",
+      "--offline"
+    ],
+    { cwd: repo, encoding: "utf8" }
+  );
+  expect(install.status, install.stderr).toBe(0);
+  const path = join(installRoot, "bin/mount-identity-audit");
+  expect(existsSync(path), "the packed CLI must install for a clean consumer").toBe(true);
+  return { path, sandbox };
+}
+
 function project(config: string): string {
   const root = mkdtempSync(join(tmpdir(), "mia-claim-"));
   mkdirSync(join(root, ".devcontainer"), { recursive: true });
@@ -148,6 +181,47 @@ test("CLI reads JSONC and selected Compose metadata @claim:config-support", () =
   const parserTests = spawnSync("cargo", ["test", "config::tests"], { cwd: repo, encoding: "utf8" });
   expect(parserTests.status, parserTests.stderr).toBe(0);
   rmSync(root, { recursive: true, force: true });
+});
+
+test("Dev Container and Compose precedence holds in the packed CLI @claim:compose-user-precedence", () => {
+  test.setTimeout(120_000);
+  const packed = packedCliPath();
+  const cases = [
+    { property: "containerUser", devcontainerUser: "424242:424242", composeUser: "0:0", exit: 0, verdict: "pass", uid: 0, source: "Compose service app user" },
+    { property: "containerUser", devcontainerUser: "0:0", composeUser: "424242:424242", exit: 1, verdict: "fail", uid: 424242, source: "Compose service app user" },
+    { property: "remoteUser", devcontainerUser: "424242:424242", composeUser: "0:0", exit: 1, verdict: "fail", uid: 424242, source: "devcontainer remoteUser" },
+    { property: "remoteUser", devcontainerUser: "0:0", composeUser: "424242:424242", exit: 0, verdict: "pass", uid: 0, source: "devcontainer remoteUser" }
+  ] as const;
+  const roots: string[] = [];
+  try {
+    for (const item of cases) {
+      const root = project(`{
+        dockerComposeFile: "compose.yml",
+        service: "app",
+        workspaceFolder: "/work",
+        ${item.property}: "${item.devcontainerUser}"
+      }`);
+      roots.push(root);
+      writeFileSync(
+        join(root, ".devcontainer/compose.yml"),
+        `services:\n  app:\n    user: "${item.composeUser}"\n    volumes:\n      - ../:/work\n`
+      );
+      const output = spawnSync(
+        packed.path,
+        [root, "--runtime", "docker", "--no-runtime", "--json"],
+        { encoding: "utf8" }
+      );
+      expect(output.status).toBe(item.exit);
+      const report = JSON.parse(output.stdout);
+      expect(report.verdict).toBe(item.verdict);
+      expect(report.identity.container_uid).toBe(item.uid);
+      expect(report.identity.container_gid).toBe(item.uid);
+      expect(report.identity.source).toBe(item.source);
+    }
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+    rmSync(packed.sandbox, { recursive: true, force: true });
+  }
 });
 
 test("share mode removes every supplied local path @claim:share-redaction", () => {

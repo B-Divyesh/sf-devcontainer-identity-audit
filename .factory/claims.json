@@ -35,6 +35,13 @@
     "sandbox": "fresh JSONC and Compose sample with a bind mount"
   },
   {
+    "id": "compose-user-precedence",
+    "claim": "For a selected Compose service, its user overrides containerUser while remoteUser overrides that service user.",
+    "where": "README identity precedence",
+    "test": "npm run test:claims -- --grep @claim:compose-user-precedence",
+    "sandbox": "fresh packed and installed CLI; both root/non-root conflict directions at both precedence levels on root-owned mode 0755 workspaces"
+  },
+  {
     "id": "share-redaction",
     "claim": "--share removes project, workspace, configuration, and runtime-wrapper paths from JSON reports.",
     "where": "README and Privacy",

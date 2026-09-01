@@ -13,6 +13,20 @@ test("loads without console errors and exposes the page structure", async ({ pag
   expect(errors).toEqual([]);
 });
 
+test("keeps all three required facts in the cold first viewport", async ({ page }) => {
+  await page.goto("/");
+  const facts = page.locator(".plain-facts li");
+  await expect(facts).toHaveCount(3);
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  for (let index = 0; index < 3; index += 1) {
+    const box = await facts.nth(index).boundingBox();
+    expect(box, `fact ${index + 1} must be rendered`).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height);
+  }
+});
+
 test("predicts a mismatch then a safe keep-id mapping", async ({ page }) => {
   await page.goto("/#demo");
   await page.getByRole("button", { name: "Run preflight" }).click();
@@ -223,6 +237,6 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-5");
+    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-6");
   }
 });

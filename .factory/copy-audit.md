@@ -1,6 +1,6 @@
 # Landing-page copy audit
 
-Audited 2026-08-30 against `site/index.html`, `site/src/main.ts`, and
+Audited 2026-09-01 against `site/index.html`, `site/src/main.ts`, and
 `site/src/audit.ts`. Counts use whitespace-separated words. UI labels and table
 fragments are listed separately because they are not sentences.
 
@@ -14,7 +14,7 @@ fragments are listed separately because they are not sentences.
 | 17 | For developers using Dev Containers or rootless Podman who need a writable workspace on the first open. |
 | 6 | Runs a known rootless Podman mismatch. |
 | 5 | Free under the MIT License. |
-| 4 | No sign-in is required. |
+| 9 | The browser sample works offline after the first visit. |
 | 7 | The browser demo sends no project data. |
 | 10 | Host identity and container identity meet at one bind mount. |
 | 14 | This browser check uses the same owner, group, and mode rules as the CLI. |

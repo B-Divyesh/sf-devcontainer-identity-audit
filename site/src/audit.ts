@@ -4,6 +4,10 @@ export type UserNamespace = "default" | "keep-id" | "host";
 export interface AuditInput {
   ownerUid: string;
   ownerGid: string;
+  hostUid: string;
+  hostGid: string;
+  subuidStart: string;
+  subgidStart: string;
   remoteUid: string;
   remoteGid: string;
   mode: string;
@@ -53,14 +57,21 @@ export function evaluateAudit(input: AuditInput): DemoAuditResult {
   let mappedUid = remoteUid;
   let mappedGid = remoteGid;
   let mapping = "direct mapping";
-  if (input.runtime === "podman" && input.userns === "default") {
-    mappedUid = mappedId(remoteUid === 0 ? ownerUid : 100_000 + remoteUid - 1, "Mapped UID");
-    mappedGid = mappedId(remoteGid === 0 ? ownerGid : 100_000 + remoteGid - 1, "Mapped GID");
-    mapping = "rootless subuid map";
-  } else if (input.runtime === "podman" && input.userns === "keep-id") {
-    mappedUid = ownerUid;
-    mappedGid = ownerGid;
-    mapping = "keep-id mapping";
+  if (input.runtime === "podman" && input.userns !== "host") {
+    const hostUid = numericId(input.hostUid, "Host caller UID");
+    const hostGid = numericId(input.hostGid, "Host caller GID");
+    const subuidStart = numericId(input.subuidStart, "Subordinate UID start");
+    const subgidStart = numericId(input.subgidStart, "Subordinate GID start");
+
+    if (input.userns === "default") {
+      mappedUid = mappedId(remoteUid === 0 ? hostUid : subuidStart + remoteUid - 1, "Mapped UID");
+      mappedGid = mappedId(remoteGid === 0 ? hostGid : subgidStart + remoteGid - 1, "Mapped GID");
+      mapping = "rootless subuid map";
+    } else {
+      mappedUid = mappedId(remoteUid === hostUid ? hostUid : subuidStart + remoteUid, "Mapped UID");
+      mappedGid = mappedId(remoteGid === hostGid ? hostGid : subgidStart + remoteGid, "Mapped GID");
+      mapping = "keep-id mapping";
+    }
   }
 
   const bits = mappedUid === 0

@@ -21,6 +21,10 @@ function auditInput(): AuditInput {
   return {
     ownerUid: value("owner-uid"),
     ownerGid: value("owner-gid"),
+    hostUid: value("host-uid"),
+    hostGid: value("host-gid"),
+    subuidStart: value("subuid-start"),
+    subgidStart: value("subgid-start"),
     remoteUid: value("remote-uid"),
     remoteGid: value("remote-gid"),
     mode: value("mode"),
@@ -58,6 +62,10 @@ function loadMismatchSample(): void {
   select<HTMLInputElement>("#owner-gid").value = "1000";
   select<HTMLInputElement>("#remote-uid").value = "1000";
   select<HTMLInputElement>("#remote-gid").value = "1000";
+  select<HTMLInputElement>("#host-uid").value = "1000";
+  select<HTMLInputElement>("#host-gid").value = "1000";
+  select<HTMLInputElement>("#subuid-start").value = "100000";
+  select<HTMLInputElement>("#subgid-start").value = "100000";
   select<HTMLInputElement>("#mode").value = "0755";
   runtime.value = "podman";
   userns.value = "default";
@@ -72,6 +80,15 @@ form.addEventListener("submit", (event) => {
 });
 
 select("#load-safe").addEventListener("click", () => {
+  select<HTMLInputElement>("#owner-uid").value = "1000";
+  select<HTMLInputElement>("#owner-gid").value = "1000";
+  select<HTMLInputElement>("#remote-uid").value = "1000";
+  select<HTMLInputElement>("#remote-gid").value = "1000";
+  select<HTMLInputElement>("#host-uid").value = "1000";
+  select<HTMLInputElement>("#host-gid").value = "1000";
+  select<HTMLInputElement>("#subuid-start").value = "100000";
+  select<HTMLInputElement>("#subgid-start").value = "100000";
+  select<HTMLInputElement>("#mode").value = "0755";
   runtime.value = "podman";
   userns.value = "keep-id";
   select<HTMLInputElement>("#read-only").checked = false;
@@ -88,8 +105,15 @@ function updateRuntimeFields(): void {
   const isPodman = runtime.value === "podman";
   usernsLabel.hidden = !isPodman;
   userns.disabled = !isPodman;
+  const usesRootlessMap = isPodman && userns.value !== "host";
+  const mapFields = select<HTMLFieldSetElement>("#rootless-map");
+  mapFields.hidden = !usesRootlessMap;
+  mapFields.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
+    input.disabled = !usesRootlessMap;
+  });
 }
 runtime.addEventListener("change", updateRuntimeFields);
+userns.addEventListener("change", updateRuntimeFields);
 updateRuntimeFields();
 
 if (document.body.dataset.demo === "true") {

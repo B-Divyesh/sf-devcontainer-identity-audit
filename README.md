@@ -34,6 +34,11 @@ The command copies `examples/mismatch/` into a unique temporary directory. It
 prints that path and audits the copy. The known write mismatch returns `FAIL`
 with exit code `1`; this preserves the normal scripting contract.
 
+The browser sample also accepts the host caller identity and the allocated
+`/etc/subuid` and `/etc/subgid` range starts. These values let it distinguish
+the identity kept by Podman `keep-id` from other remote users, which still map
+through the subordinate ranges. The CLI reads the live runtime map instead.
+
 ## Usage
 
 Run it from a repository. The CLI discovers `.devcontainer/devcontainer.json`,

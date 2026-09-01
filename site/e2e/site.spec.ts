@@ -37,11 +37,33 @@ test("predicts a mismatch then a safe keep-id mapping", async ({ page }) => {
   await expect(page.locator("#result-title")).toHaveText("Workspace is writable");
 });
 
-test("announces validation errors", async ({ page }) => {
-  await page.goto("/#demo");
+test("loads every safe-example value after a validation error", async ({ page }) => {
+  await page.goto("/demo/");
   await page.getByLabel("Directory mode").fill("0899");
   await page.getByRole("button", { name: "Run preflight" }).click();
   await expect(page.getByRole("alert")).toContainText("octal digits");
+  await page.getByLabel("Owner UID").fill("3000");
+  await page.getByLabel("Owner GID").fill("3001");
+  await page.getByLabel("Remote UID").fill("4000");
+  await page.getByLabel("Remote GID").fill("4001");
+  await page.getByLabel("Host caller UID").fill("5000");
+  await page.getByLabel("Host caller GID").fill("5001");
+  await page.getByLabel("Subordinate UID start").fill("200000");
+  await page.getByLabel("Subordinate GID start").fill("300000");
+  await page.getByLabel("Mount is declared read-only").check();
+  await page.getByRole("button", { name: "Load safe example" }).click();
+
+  for (const label of ["Owner UID", "Owner GID", "Remote UID", "Remote GID", "Host caller UID", "Host caller GID"]) {
+    await expect(page.getByLabel(label)).toHaveValue("1000");
+  }
+  await expect(page.getByLabel("Subordinate UID start")).toHaveValue("100000");
+  await expect(page.getByLabel("Subordinate GID start")).toHaveValue("100000");
+  await expect(page.getByLabel("Directory mode")).toHaveValue("0755");
+  await expect(page.getByLabel("Runtime")).toHaveValue("podman");
+  await expect(page.getByLabel("Podman user namespace")).toHaveValue("keep-id");
+  await expect(page.getByLabel("Mount is declared read-only")).not.toBeChecked();
+  await expect(page.getByRole("alert")).toBeHidden();
+  await expect(page.locator("#status-stamp")).toHaveText("pass");
 });
 
 test("rejects the reserved Linux identity in direct Docker mode", async ({ page }) => {
@@ -179,22 +201,24 @@ test("keeps demo data local and stores no user values", async ({ page, context }
   expect(storage).toEqual({ local: 0, session: 0, indexedDb: 0 });
 });
 
-test("gives mobile links and buttons 44px hit areas", async ({ page }, testInfo) => {
+test("gives every public route 44px mobile link and button targets", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "mobile-only target-size check");
-  await page.goto("/");
-  const undersized = await page.locator("a, button").evaluateAll((elements) =>
-    elements
-      .filter((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      })
-      .filter((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.width < 44 || rect.height < 44;
-      })
-      .map((element) => `${element.textContent?.trim()}: ${element.getBoundingClientRect().width}x${element.getBoundingClientRect().height}`)
-  );
-  expect(undersized).toEqual([]);
+  for (const path of ["/", "/demo/", "/privacy/", "/terms/", "/404.html"]) {
+    await page.goto(path);
+    const undersized = await page.locator("a, button").evaluateAll((elements) =>
+      elements
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        })
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width < 44 || rect.height < 44;
+        })
+        .map((element) => `${element.textContent?.trim()}: ${element.getBoundingClientRect().width}x${element.getBoundingClientRect().height}`)
+    );
+    expect(undersized, `${path} contains an undersized target`).toEqual([]);
+  }
 });
 
 test("shows the offline fallback and legal pages", async ({ page, context }) => {
@@ -237,6 +261,6 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-6");
+    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-7");
   }
 });

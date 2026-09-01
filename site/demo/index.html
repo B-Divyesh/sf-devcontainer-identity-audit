@@ -65,6 +65,16 @@
             <label id="userns-label">Podman user namespace
               <select id="userns" name="userns"><option value="default">Default subuid map</option><option value="keep-id">keep-id</option><option value="host">host</option></select>
             </label>
+            <fieldset id="rootless-map" class="nested-fieldset">
+              <legend>Rootless identity map</legend>
+              <div class="field-pair">
+                <label>Host caller UID <input id="host-uid" name="hostUid" inputmode="numeric" value="1000" required aria-describedby="map-hint form-error" /></label>
+                <label>Host caller GID <input id="host-gid" name="hostGid" inputmode="numeric" value="1000" required aria-describedby="map-hint form-error" /></label>
+                <label>Subordinate UID start <input id="subuid-start" name="subuidStart" inputmode="numeric" value="100000" required aria-describedby="map-hint form-error" /></label>
+                <label>Subordinate GID start <input id="subgid-start" name="subgidStart" inputmode="numeric" value="100000" required aria-describedby="map-hint form-error" /></label>
+              </div>
+              <small id="map-hint">Enter the caller identity and range starts from <code>/etc/subuid</code> and <code>/etc/subgid</code>.</small>
+            </fieldset>
             <label class="check-label"><input id="read-only" name="readOnly" type="checkbox" /> Mount is declared read-only</label>
           </fieldset>
           <div class="form-actions">
@@ -87,7 +97,7 @@
     <footer>
       <div><span class="brand-mark" aria-hidden="true">M↔I</span><p>Local identity evidence for mounted workspaces.</p></div>
       <nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit/blob/main/LICENSE">MIT license</a></nav>
-      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · repair-6</p>
+      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · repair-7</p>
     </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -95,7 +95,7 @@
     "claim": "The browser sample follows the CLI owner, group, mode, and rootless mapping rules.",
     "where": "landing browser sample",
     "test": "npm run test:claims -- --grep @claim:browser-parity",
-    "sandbox": "known rootless mismatch and keep-id recovery"
+    "sandbox": "known mismatch, exact packed-CLI 1000:1000 workspace versus 2000:2000 keep-id case, and safe recovery"
   },
   {
     "id": "mit-license",

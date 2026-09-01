@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  chownSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -33,15 +34,17 @@ function runCli(args: string[], env: NodeJS.ProcessEnv = {}) {
 }
 
 function packedCliPath(): { path: string; sandbox: string } {
+  const sandbox = mkdtempSync(join(tmpdir(), "mia-packed-claim-"));
+  const packageTarget = join(sandbox, "package-target");
   const packageRun = spawnSync("cargo", ["package", "--allow-dirty", "--no-verify"], {
     cwd: repo,
-    encoding: "utf8"
+    encoding: "utf8",
+    env: { ...process.env, CARGO_TARGET_DIR: packageTarget }
   });
   expect(packageRun.status, packageRun.stderr).toBe(0);
 
-  const crate = join(repo, "target/package/mount-identity-audit-0.1.0.crate");
+  const crate = join(packageTarget, "package/mount-identity-audit-0.1.0.crate");
   expect(existsSync(crate), "cargo package must produce the consumer artifact").toBe(true);
-  const sandbox = mkdtempSync(join(tmpdir(), "mia-packed-claim-"));
   const sourceRoot = join(sandbox, "source");
   const installRoot = join(sandbox, "install");
   mkdirSync(sourceRoot, { recursive: true });
@@ -337,10 +340,49 @@ test("browser sample reloads offline after first visit @claim:offline-reload", a
   }
 });
 
-test("browser model covers mismatch and keep-id recovery @claim:browser-parity", async ({ page }) => {
+test("browser model matches the packed CLI for keep-id mappings @claim:browser-parity", async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto("/demo/");
   await expect(page.locator("#mapped-id")).toContainText("100999:100999");
   await expect(page.locator("#status-stamp")).toHaveText("fail");
+
+  await page.getByLabel("Remote UID").fill("2000");
+  await page.getByLabel("Remote GID").fill("2000");
+  await page.getByLabel("Podman user namespace").selectOption("keep-id");
+  await page.getByRole("button", { name: "Run preflight" }).click();
+  await expect(page.locator("#mapped-id")).toHaveText("102000:102000 · keep-id mapping");
+  await expect(page.locator("#status-stamp")).toHaveText("fail");
+
+  const packed = packedCliPath();
+  const root = project('{ remoteUser: "2000:2000", runArgs: ["--userns", "keep-id"] }');
+  const runtime = join(root, "podman-keep-id-map");
+  writeFileSync(runtime, `#!/bin/sh
+case "$1" in
+  info) printf '%s\\n' '{"version":{"Version":"5.2.2"},"host":{"security":{"rootless":true}}}' ;;
+  unshare) printf '%s\\n' '0 1000 1' '1 100001 65536' ;;
+  *) exit 9 ;;
+esac
+`);
+  chmodSync(runtime, 0o755);
+  if (process.getuid?.() === 0) chownSync(root, 1000, 1000);
+  try {
+    const output = spawnSync(
+      packed.path,
+      [root, "--runtime", "podman", "--runtime-bin", runtime, "--json"],
+      { encoding: "utf8" }
+    );
+    const report = JSON.parse(output.stdout);
+    expect(output.status).toBe(1);
+    expect(report.verdict).toBe("fail");
+    expect(`${report.identity.host_uid}:${report.identity.host_gid}`).toBe("102000:102000");
+    if (process.getuid?.() === 0) {
+      expect(`${report.workspace.owner_uid}:${report.workspace.owner_gid}`).toBe("1000:1000");
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(packed.sandbox, { recursive: true, force: true });
+  }
+
   await page.getByRole("button", { name: "Load safe example" }).click();
   await expect(page.locator("#mapped-id")).toContainText("1000:1000 · keep-id mapping");
   await expect(page.locator("#status-stamp")).toHaveText("pass");

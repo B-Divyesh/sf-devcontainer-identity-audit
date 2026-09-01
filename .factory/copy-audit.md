@@ -21,6 +21,7 @@ fragments are listed separately because they are not sentences.
 | 6 | It stores and sends nothing you enter. |
 | 11 | Three or four octal digits, such as 0755 or 0775. |
 | 9 | Use numeric identities—the CLI refuses to guess named users. |
+| 11 | Enter the caller identity and range starts from `/etc/subuid` and `/etc/subgid`. |
 | 8 | Run the sample mismatch or load the safe example. |
 | 11 | The report will explain the effective host identity and exact permission branch. |
 | 12 | Find the remote user and workspace bind in JSONC or Compose metadata. |

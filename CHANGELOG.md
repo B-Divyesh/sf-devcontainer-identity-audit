@@ -2,6 +2,10 @@
 
 ## Unreleased - 2026-08-30
 
+- Corrected browser `keep-id` mapping for remote users that differ from the
+  host caller, with a packed-CLI parity regression.
+- Made the safe-example action replace every input after validation errors.
+- Enforced 44 px link and button targets across every public route.
 - Added isolated CLI and browser sample modes with claim-tagged regression tests.
 - Rejected Linux's reserved UID/GID value `4294967295` across CLI and browser paths.
 - Added complete route metadata, a designed 404 response, legal-page shells, and build identity.

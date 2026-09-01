@@ -1,10 +1,10 @@
 # Mount Identity Audit — polish 1 handoff
 
-## Status: ready to deploy
+## Status: deployed and verified
 
 Repair commit: `8334cf22b59a886a3d3a6aceade109daeaadf716`.
-This handoff commit records its verification and the live check is completed
-after the configured static deployment receives the final push.
+The static site was deployed directly to the scoped production Static Web App
+and checked cold at `https://devcontainer-identity-audit.sociobot.in/`.
 
 ## What changed
 
@@ -62,7 +62,18 @@ npm run build
 The factory deploys the static `dist/site` output from `main`. No secrets,
 infrastructure, DNS, storage, or unrelated services were accessed.
 
+## Live verification
+
+- `verify-url.sh` passed at the production URL: HTTP 200, one title, `lang=en`,
+  one `h1`, `<main>`, image alt text, labelled buttons, and zero console errors.
+  Evidence: `/tmp/mia-polish-1-live/verify.json`,
+  `/tmp/mia-polish-1-live/screenshot-desktop.png`, and
+  `/tmp/mia-polish-1-live/screenshot-mobile.png`.
+- Production hero response: `Cache-Control: public, max-age=31536000, immutable`.
+- Production desktop browser suite: 14 passed, 4 mobile-only skips. Production
+  mobile suite: 18 passed, including 390 px layout and 200% text reflow.
+- An unknown production path returns the designed 404 with HTTP 404.
+
 ## Known gaps
 
-None in the product. The final live URL/header check is performed after this
-commit is pushed through the configured deployment.
+None.

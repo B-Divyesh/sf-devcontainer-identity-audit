@@ -5,7 +5,7 @@ Candidate repaired from `190a4a1fe158c9728d9c38c7eeb466898cac8886` in commit
 
 | Finding | Change made | Evidence |
 | --- | --- | --- |
-| F-1-1 | Renamed the hero to `mount-ledger-6b7fee8c.webp`; the service worker precaches it and SWA sends immutable one-year caching. | `deployment.test.ts` immutable-hero assertion; `dist/site/index.html`; live header check pending deploy. |
+| F-1-1 | Renamed the hero to `mount-ledger-6b7fee8c.webp`; the service worker precaches it and SWA sends immutable one-year caching. | `deployment.test.ts` immutable-hero assertion; live `https://devcontainer-identity-audit.sociobot.in/mount-ledger-6b7fee8c.webp` returned `Cache-Control: public, max-age=31536000, immutable`. |
 | F-1-2 | Added focusable route headings and focus handling for demo, fragment, Back, and Forward navigation. | Playwright `forward, back, and fragment navigation focus the destination heading`. |
 | F-1-3 | Renamed the install control and its success text to name the copied result. | Landing copy audit; Playwright page structure check. |
 | F-1-4 | Replaced every public `preflight` label with literal check/report language. | `copy-audit.md`; Playwright primary-flow check. |
@@ -34,13 +34,16 @@ Candidate repaired from `190a4a1fe158c9728d9c38c7eeb466898cac8886` in commit
 ## Demo and screen evidence
 
 - Query demo: `/?demo=1#demo`, isolated DOM-only sample state, banner, reset, and blank-check exit.
-- Desktop screenshot: `/tmp/mia-polish-1-local/screenshot-desktop.png`.
-- Mobile screenshot: `/tmp/mia-polish-1-local/screenshot-mobile.png`.
+- Desktop screenshot: `/tmp/mia-polish-1-live/screenshot-desktop.png`.
+- Mobile screenshot: `/tmp/mia-polish-1-live/screenshot-mobile.png`.
 
 ## Verification
 
 `npm test` passed: 10 Rust unit tests, 21 CLI integration tests, 23 Vitest
 tests, and 74 Playwright tests (six intentional cross-project skips). The
 fresh clone `/tmp/mia-clean-f3Zfgg` completed every exact `claims.json` command
-individually; `/tmp/mia-clean-claims.pass` is its completion marker. Live checks
-are appended after deployment.
+individually; `/tmp/mia-clean-claims.pass` is its completion marker. Cold live
+checks passed on `https://devcontainer-identity-audit.sociobot.in/`: factory
+URL verifier, 14 desktop browser checks (four mobile-only skips), and 18 mobile
+browser checks, including the query demo, focus restoration, 200% text reflow,
+privacy, offline reload, 404, and Axe integration.

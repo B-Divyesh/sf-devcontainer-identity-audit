@@ -2,13 +2,13 @@
 
 ## Browser sample
 
-- URL: `https://devcontainer-identity-audit.sociobot.in/demo/`
-- Local URL: `http://127.0.0.1:4173/demo/` after `npm run build:site && npm run preview`
+- URL: `https://devcontainer-identity-audit.sociobot.in/?demo=1#demo`
+- Local URL: `http://127.0.0.1:4173/?demo=1#demo` after `npm run build:site && npm run preview`
 - Entry point: select **Try it with sample data** on the home page.
 - Sample: workspace owner, host caller, and remote user `1000:1000`; mode `0755`; subordinate ranges starting at `100000`; and rootless Podman's default map.
 - Expected first result: `FAIL`; the process maps to host `100999:100999` and cannot write the workspace.
 - Reset: select **Reset demo** in the persistent banner.
-- Exit: select **Start for real** to return to the normal calculator.
+- Exit: select **Open blank browser check** to return to the normal calculator.
 - Storage namespace: none. State exists only in the page DOM. Demo mode never reads or writes real browser storage.
 - Offline: visit once, wait for the service worker, then reload `/demo/` offline.
 - Safe example: **Load safe example** replaces every field and selects `keep-id`; it does not preserve invalid edits.

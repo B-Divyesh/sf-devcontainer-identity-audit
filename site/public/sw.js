@@ -1,5 +1,5 @@
-const CACHE = "mia-site-v6";
-const SHELL = ["/demo/", "/privacy/", "/terms/", "/404.html", "/favicon.svg"];
+const CACHE = "mia-site-v7";
+const SHELL = ["/demo/", "/privacy/", "/terms/", "/404.html", "/favicon.svg", "/mount-ledger-6b7fee8c.webp"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

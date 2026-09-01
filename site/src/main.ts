@@ -96,6 +96,9 @@ select("#load-safe").addEventListener("click", () => {
   runAudit();
 });
 
+const isQueryDemo = new URLSearchParams(window.location.search).get("demo") === "1";
+const isDemo = document.body.dataset.demo === "true" || isQueryDemo;
+
 document.querySelector<HTMLButtonElement>("#reset-demo")?.addEventListener("click", () => {
   loadMismatchSample();
   result.focus();
@@ -116,7 +119,12 @@ runtime.addEventListener("change", updateRuntimeFields);
 userns.addEventListener("change", updateRuntimeFields);
 updateRuntimeFields();
 
-if (document.body.dataset.demo === "true") {
+if (isQueryDemo) {
+  select<HTMLElement>("#query-demo-banner").hidden = false;
+  document.title = "Demo — Mount Identity Audit";
+}
+
+if (isDemo) {
   loadMismatchSample();
 }
 
@@ -125,11 +133,11 @@ document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => 
     const label = button.querySelector<HTMLElement>(".copy-label");
     try {
       await navigator.clipboard.writeText(button.dataset.copy ?? "");
-      if (label) label.textContent = "Copied";
+      if (label) label.textContent = "Install command copied";
     } catch {
       if (label) label.textContent = "Select command";
     }
-    window.setTimeout(() => { if (label) label.textContent = "Copy"; }, 1800);
+    window.setTimeout(() => { if (label) label.textContent = "Copy install command"; }, 1800);
   });
 });
 
@@ -142,3 +150,23 @@ updateConnection();
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => { void navigator.serviceWorker.register("/sw.js"); });
 }
+
+function focusRouteHeading(force = false): void {
+  if (!force && !isDemo && !window.location.hash) return;
+  const hashTargets: Record<string, string> = {
+    "#demo": "#demo-title",
+    "#how": "#method-title"
+  };
+  const target = document.querySelector<HTMLElement>(hashTargets[window.location.hash] ?? "h1");
+  if (target) {
+    window.requestAnimationFrame(() => target.focus({ preventScroll: Boolean(window.location.hash) }));
+  }
+}
+
+window.addEventListener("hashchange", () => focusRouteHeading());
+window.addEventListener("popstate", () => focusRouteHeading());
+window.addEventListener("load", () => focusRouteHeading());
+window.addEventListener("pageshow", (event) => {
+  const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  if (event.persisted || navigation?.type === "back_forward") focusRouteHeading(true);
+});

@@ -37,6 +37,12 @@
       </nav>
     </header>
 
+    <aside class="demo-banner" id="query-demo-banner" aria-label="Demo controls" hidden>
+      <p>Demo — sample data, nothing is saved</p>
+      <button id="reset-demo" type="button">Reset demo</button>
+      <a href="/#demo">Open blank browser check</a>
+    </aside>
+
     <div class="offline-banner" id="offline-banner" role="status" hidden>
       You’re offline. The demo still works locally; install links may not.
     </div>
@@ -44,27 +50,27 @@
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span aria-hidden="true">●</span> Read-only mount preflight · v0.1.0</p>
-          <h1 id="hero-title">Check mount permissions before container startup</h1>
+          <p class="eyebrow"><span aria-hidden="true">●</span> Checks without starting a container · v0.1.0</p>
+          <h1 id="hero-title" tabindex="-1">Check mount permissions before container startup</h1>
           <p class="lede">For developers using Dev Containers or rootless Podman who need a writable workspace on the first open.</p>
           <div class="hero-actions">
-            <a class="primary-button link-button" href="/demo/">Try it with sample data</a>
+            <a class="primary-button link-button" href="/?demo=1#demo">Try it with sample data</a>
             <span>Runs a known rootless Podman mismatch.</span>
           </div>
           <ul class="plain-facts">
             <li>Free under the MIT License.</li>
             <li>The browser sample works offline after the first visit.</li>
-            <li>The browser demo sends no project data.</li>
+            <li>The browser sample sends no project data.</li>
           </ul>
           <div class="install-strip" aria-label="Install command">
             <code tabindex="0">cargo install --git https://github.com/B-Divyesh/sf-devcontainer-identity-audit</code>
             <button class="copy-button" type="button" data-copy="cargo install --git https://github.com/B-Divyesh/sf-devcontainer-identity-audit">
-              <span class="copy-label">Copy</span>
+              <span class="copy-label">Copy install command</span>
             </button>
           </div>
         </div>
         <figure class="hero-art">
-          <img src="/mount-ledger.webp" width="1200" height="800" alt="A halftone technical cutaway showing a host computer and container workspace joined through aligned identity tags." fetchpriority="high" />
+          <img src="/mount-ledger-6b7fee8c.webp" width="1200" height="800" alt="A halftone technical cutaway showing a host computer and container workspace joined through aligned identity tags." fetchpriority="high" />
           <figcaption>Host identity and container identity meet at one bind mount.</figcaption>
         </figure>
       </section>
@@ -78,7 +84,7 @@
       <section class="demo-section" id="demo" aria-labelledby="demo-title">
         <div class="section-intro">
           <p class="section-number">Browser sample</p>
-          <h2 id="demo-title">Test an identity mapping</h2>
+          <h2 id="demo-title" tabindex="-1">Check numeric workspace access</h2>
           <p>This browser check uses the same owner, group, and mode rules as the CLI. It stores and sends nothing you enter.</p>
         </div>
 
@@ -128,7 +134,7 @@
             </fieldset>
 
             <div class="form-actions">
-              <button class="primary-button" type="submit">Run preflight</button>
+              <button class="primary-button" type="submit">Check mount permissions</button>
               <button class="text-button" id="load-safe" type="button">Load safe example</button>
             </div>
             <p class="form-error" id="form-error" role="alert" tabindex="-1" hidden></p>
@@ -138,7 +144,7 @@
             <div class="result-head">
               <span class="status-stamp" id="status-stamp">Ready</span>
               <div>
-                <p class="result-kicker">Preflight report</p>
+                <p class="result-kicker">Permission report</p>
                 <h3 id="result-title">Waiting for an identity</h3>
               </div>
             </div>
@@ -160,12 +166,12 @@
       <section class="method-section" id="how" aria-labelledby="method-title">
         <div class="section-intro">
           <p class="section-number">How it works</p>
-          <h2 id="method-title">Check the configuration, map, and workspace</h2>
+          <h2 id="method-title" tabindex="-1">Check the configuration, map, and workspace</h2>
         </div>
         <ol class="method-list">
           <li><span class="step-index">A</span><h3>Read config</h3><p>Find the remote user and workspace bind in JSONC or Compose metadata.</p><code>devcontainer.json → compose.yml</code></li>
-          <li><span class="step-index">B</span><h3>Read the map</h3><p>Ask Docker or Podman for runtime metadata and rootless user namespace ranges.</p><code>podman unshare … uid_map</code></li>
-          <li><span class="step-index">C</span><h3>Read the inode</h3><p>Compare the effective host UID/GID with owner, group, and other permission bits.</p><code>0755 · 1000:1000</code></li>
+          <li><span class="step-index">B</span><h3>Read the runtime identity map</h3><p>Ask Docker or Podman for runtime metadata and rootless user namespace ranges.</p><code>podman unshare … uid_map</code></li>
+          <li><span class="step-index">C</span><h3>Read workspace ownership and mode</h3><p>Compare the effective host UID/GID with owner, group, and other permission bits.</p><code>0755 · 1000:1000</code></li>
         </ol>
       </section>
 
@@ -200,7 +206,7 @@
         <h2 id="install-title">Run the same check in a terminal</h2>
         <figure class="terminal-recording">
           <img src="/demo-terminal.svg" width="900" height="420" alt="Terminal recording of the bundled CLI sample reporting a mount permission failure." />
-          <figcaption>Recorded from the real binary with <code>mount-identity-audit --demo</code>.</figcaption>
+          <figcaption>Example output from <code>mount-identity-audit --demo</code>.</figcaption>
           <details><summary>Read the terminal transcript</summary><pre><code>$ mount-identity-audit --demo
 DEMO — bundled sample data; your project was not read or changed.
 MOUNT IDENTITY AUDIT                         FAIL
@@ -217,7 +223,7 @@ The mapped remote identity can read but cannot write the workspace.</code></pre>
     <footer>
       <div><span class="brand-mark" aria-hidden="true">M↔I</span><p>Local identity evidence for mounted workspaces.</p></div>
       <nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit/blob/main/LICENSE">MIT license</a></nav>
-      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · repair-7</p>
+      <p>Built by <a href="https://sociobot.in">Param Factory</a> · v0.1.0 · polish-1</p>
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

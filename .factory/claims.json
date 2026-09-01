@@ -57,7 +57,7 @@
   },
   {
     "id": "runtime-mapping",
-    "claim": "Docker direct IDs and rootless Podman live UID/GID maps are evaluated as separate runtime cases.",
+    "claim": "The report identifies Docker direct IDs and rootless Podman live UID/GID maps as separate runtime cases.",
     "where": "landing runtime table and README",
     "test": "npm run test:claims -- --grep @claim:runtime-mapping",
     "sandbox": "direct Docker fixture and recording rootless Podman adapter"
@@ -103,5 +103,54 @@
     "where": "landing first screen, README, Terms",
     "test": "npm run test:claims -- --grep @claim:mit-license",
     "sandbox": "landing copy, package metadata, and shipped license text"
+  },
+  {
+    "id": "browser-report-details",
+    "claim": "The browser sample reports the mapped host identity and the selected permission branch.",
+    "where": "landing browser sample",
+    "test": "npm run test:claims -- --grep @claim:browser-report-details",
+    "sandbox": "fresh browser query-demo context with the bundled mismatch"
+  },
+  {
+    "id": "config-discovery",
+    "claim": "The CLI discovers .devcontainer/devcontainer.json, .devcontainer.json, and devcontainer.json in that order.",
+    "where": "README usage",
+    "test": "npm run test:claims -- --grep @claim:config-discovery",
+    "sandbox": "fresh projects with each supported path and a precedence fixture"
+  },
+  {
+    "id": "runtime-optional",
+    "claim": "Docker or Podman is optional when every identity is supplied numerically.",
+    "where": "README install",
+    "test": "npm run test:claims -- --grep @claim:runtime-optional",
+    "sandbox": "fresh numeric project with --no-runtime"
+  },
+  {
+    "id": "report-limits",
+    "claim": "Detailed reports list POSIX ACLs, security labels, and remote filesystem policy as limits.",
+    "where": "README limits",
+    "test": "npm run test:claims -- --grep @claim:report-limits",
+    "sandbox": "fresh pass, fail, and unknown CLI reports"
+  },
+  {
+    "id": "compose-build-image",
+    "claim": "A Compose service with build and image returns UNKNOWN instead of trusting a stale image tag.",
+    "where": "README limits",
+    "test": "npm run test:claims -- --grep @claim:compose-build-image",
+    "sandbox": "fresh Compose build-plus-image project and metadata-only Docker adapter"
+  },
+  {
+    "id": "install-binary",
+    "claim": "A packed crate installs one mount-identity-audit executable with help output.",
+    "where": "README install",
+    "test": "npm run test:claims -- --grep @claim:install-binary",
+    "sandbox": "fresh cargo package, unpack, and isolated cargo-install prefix"
+  },
+  {
+    "id": "build-artifacts",
+    "claim": "The build command produces the release executable and deployable dist/site directory.",
+    "where": "README develop, test, and build",
+    "test": "npm run test:claims -- --grep @claim:build-artifacts",
+    "sandbox": "clean build outputs from the claim-suite build step"
   }
 ]

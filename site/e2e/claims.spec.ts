@@ -111,12 +111,19 @@ test("CLI demo uses an isolated bundled sample @claim:cli-demo", () => {
 test("home opens the working browser sample in one click @claim:browser-demo", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "Try it with sample data" }).click();
-  await expect(page).toHaveURL(/\/demo\/$/);
+  await expect(page).toHaveURL(/\/?demo=1#demo$/);
   await expect(page.getByText("Demo — sample data, nothing is saved")).toBeVisible();
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await expect(page.locator("#mapped-id")).toContainText("100999:100999");
   await expect(page.getByRole("button", { name: "Reset demo" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Start for real" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open blank browser check" })).toBeVisible();
+});
+
+test("browser sample shows mapped identity and permission branch @claim:browser-report-details", async ({ page }) => {
+  await page.goto("/?demo=1#demo");
+  await expect(page.locator("#mapped-id")).toHaveText("100999:100999 · rootless subuid map");
+  await expect(page.locator("#access-id")).toHaveText("read · no write · traverse");
+  await expect(page.locator("#result-summary")).toContainText("cannot create or edit entries");
 });
 
 test("CLI verdicts keep stable process exit codes @claim:permission-verdicts", () => {
@@ -186,6 +193,44 @@ test("CLI reads JSONC and selected Compose metadata @claim:config-support", () =
   rmSync(root, { recursive: true, force: true });
 });
 
+test("CLI discovers all supported configuration paths in a stable order @claim:config-discovery", () => {
+  const roots: string[] = [];
+  try {
+    const paths = [".devcontainer/devcontainer.json", ".devcontainer.json", "devcontainer.json"];
+    for (const path of paths) {
+      const root = mkdtempSync(join(tmpdir(), "mia-discovery-"));
+      roots.push(root);
+      mkdirSync(join(root, path, ".."), { recursive: true });
+      writeFileSync(join(root, path), '{ remoteUser: "0:0" }');
+      const output = runCli([root, "--runtime", "docker", "--no-runtime", "--json"]);
+      expect(output.status).toBe(0);
+      expect(JSON.parse(output.stdout).config_path).toBe(join(root, path));
+    }
+    const root = mkdtempSync(join(tmpdir(), "mia-discovery-order-"));
+    roots.push(root);
+    mkdirSync(join(root, ".devcontainer"));
+    writeFileSync(join(root, ".devcontainer/devcontainer.json"), '{ remoteUser: "0:0" }');
+    writeFileSync(join(root, ".devcontainer.json"), '{ remoteUser: "424242:424242" }');
+    writeFileSync(join(root, "devcontainer.json"), '{ remoteUser: "424243:424243" }');
+    const output = runCli([root, "--runtime", "docker", "--no-runtime", "--json"]);
+    expect(output.status).toBe(0);
+    expect(JSON.parse(output.stdout).config_path).toBe(join(root, ".devcontainer/devcontainer.json"));
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("numeric identities work with no installed runtime @claim:runtime-optional", () => {
+  const root = project('{ remoteUser: "0:0" }');
+  try {
+    const output = runCli([root, "--runtime", "docker", "--no-runtime", "--json"]);
+    expect(output.status).toBe(0);
+    expect(JSON.parse(output.stdout).verdict).toBe("pass");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("Dev Container and Compose precedence holds in the packed CLI @claim:compose-user-precedence", ({}, testInfo) => {
   test.skip(testInfo.project.name === "mobile", "the packaged CLI consumer regression runs once");
   test.setTimeout(120_000);
@@ -252,7 +297,7 @@ test("JSON reports retain their versioned share-safe contract @claim:report-cont
   rmSync(root, { recursive: true, force: true });
 });
 
-test("Docker and rootless Podman use distinct identity maps @claim:runtime-mapping", () => {
+test("Docker and rootless Podman use distinct named identity maps @claim:runtime-mapping", () => {
   const root = project('{ remoteUser: "1000:1000" }');
   const runtime = join(root, "podman-map");
   writeFileSync(runtime, `#!/bin/sh
@@ -268,6 +313,8 @@ esac
   expect(JSON.parse(docker.stdout).identity.host_uid).toBe(1000);
   expect(JSON.parse(podman.stdout).identity.host_uid).toBe(100999);
   expect(JSON.parse(podman.stdout).runtime.rootless).toBe(true);
+  expect(JSON.parse(docker.stdout).runtime.kind).toBe("docker");
+  expect(JSON.parse(podman.stdout).runtime.kind).toBe("podman");
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -288,8 +335,45 @@ test("unproven identities never receive a safe verdict @claim:conservative-ident
   await page.goto("/demo/");
   await page.getByLabel("Runtime").selectOption("docker");
   await page.getByLabel("Remote UID").fill("4294967295");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.getByRole("alert")).toContainText("reserved 4294967295");
+});
+
+test("detailed reports identify the documented model limits @claim:report-limits", () => {
+  const cases = [
+    ['{ remoteUser: "0:0" }', 0],
+    ['{ remoteUser: "424242:424242" }', 1],
+    ['{ remoteUser: "vscode" }', 2]
+  ] as const;
+  const roots: string[] = [];
+  try {
+    for (const [config, exit] of cases) {
+      const root = project(config);
+      roots.push(root);
+      const output = runCli([root, "--runtime", "docker", "--no-runtime", "--json"]);
+      expect(output.status).toBe(exit);
+      expect(JSON.parse(output.stdout).caveats.join(" ")).toContain("POSIX ACLs, security labels, and remote filesystem policy");
+    }
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Compose build plus image does not trust a stale image tag @claim:compose-build-image", () => {
+  const root = project('{ dockerComposeFile: "compose.yml", service: "app", workspaceFolder: "/work" }');
+  const runtime = join(root, "docker-fixture");
+  try {
+    writeFileSync(join(root, ".devcontainer/compose.yml"), "services:\n  app:\n    build: .\n    image: local/audit-stale:latest\n    volumes:\n      - ../:/work\n");
+    writeFileSync(runtime, "#!/bin/sh\ncase \"$1\" in\n  info) printf '%s\\n' '{\"ServerVersion\":\"27.3.1\",\"SecurityOptions\":[]}' ;;\n  image) printf '%s\\n' '\"\"' ;;\n  *) exit 8 ;;\nesac\n");
+    chmodSync(runtime, 0o755);
+    const output = runCli([root, "--runtime", "docker", "--runtime-bin", runtime, "--json"]);
+    expect(output.status).toBe(2);
+    const report = JSON.parse(output.stdout);
+    expect(report.verdict).toBe("unknown");
+    expect(report.summary).toContain("Compose service app build");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("browser sample sends and stores no entered project data @claim:browser-private", async ({ page, context }) => {
@@ -298,7 +382,7 @@ test("browser sample sends and stores no entered project data @claim:browser-pri
   await page.goto("/demo/");
   await page.getByLabel("Owner UID").fill("3141592");
   const beforeRun = requests.length;
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   expect(requests).toHaveLength(beforeRun);
   expect(requests.join("\n")).not.toContain("3141592");
   expect(requests.every((request) => new URL(request.split(" ")[0]).origin === new URL(page.url()).origin)).toBe(true);
@@ -349,7 +433,7 @@ test("browser model matches the packed CLI for keep-id mappings @claim:browser-p
   await page.getByLabel("Remote UID").fill("2000");
   await page.getByLabel("Remote GID").fill("2000");
   await page.getByLabel("Podman user namespace").selectOption("keep-id");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.locator("#mapped-id")).toHaveText("102000:102000 · keep-id mapping");
   await expect(page.locator("#status-stamp")).toHaveText("fail");
 
@@ -395,4 +479,23 @@ test("MIT terms are shipped with the free product @claim:mit-license", async ({ 
   const license = readFileSync(join(repo, "LICENSE"), "utf8");
   expect(cargo).toContain('license = "MIT"');
   expect(license).toContain("Permission is hereby granted, free of charge");
+});
+
+test("packed crate installs one documented executable @claim:install-binary", ({}, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "the packaged CLI consumer regression runs once");
+  test.setTimeout(120_000);
+  const packed = packedCliPath();
+  try {
+    expect(readdirSync(join(packed.sandbox, "install", "bin"))).toEqual(["mount-identity-audit"]);
+    const help = spawnSync(packed.path, ["--help"], { encoding: "utf8" });
+    expect(help.status).toBe(0);
+    expect(help.stdout).toContain("Usage: mount-identity-audit");
+  } finally {
+    rmSync(packed.sandbox, { recursive: true, force: true });
+  }
+});
+
+test("claim-suite build leaves the release CLI and static site @claim:build-artifacts", () => {
+  expect(existsSync(releaseCli)).toBe(true);
+  expect(existsSync(join(repo, "dist/site/index.html"))).toBe(true);
 });

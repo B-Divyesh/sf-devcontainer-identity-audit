@@ -4,15 +4,15 @@ Mount Identity Audit checks bind-mount ownership before a Dev Container or
 rootless Podman workspace starts. It compares host permissions with the mapped
 numeric container identity.
 
-It is for developers and CI maintainers who would rather see a precise ownership
-report than discover a `Permission denied` after startup.
+It is for developers and CI maintainers who want a numeric ownership report
+before startup.
 
 Live documentation and one-click sample:
 [devcontainer-identity-audit.sociobot.in/demo/](https://devcontainer-identity-audit.sociobot.in/demo/)
 
 ## Install
 
-Build the single binary with a stable Rust toolchain:
+Build one binary with a stable Rust toolchain:
 
 ```sh
 cargo install --path .
@@ -32,7 +32,7 @@ mount-identity-audit --demo
 
 The command copies `examples/mismatch/` into a unique temporary directory. It
 prints that path and audits the copy. The known write mismatch returns `FAIL`
-with exit code `1`; this preserves the normal scripting contract.
+with exit code `1`, the same as a project with a confirmed mismatch.
 
 The browser sample also accepts the host caller identity and the allocated
 `/etc/subuid` and `/etc/subgid` range starts. These values let it distinguish
@@ -70,7 +70,7 @@ available locally:
 mount-identity-audit . --runtime podman --remote-user 1000:1000
 ```
 
-Scriptable JSON and share-safe output are first-class:
+Use `--json` for scripts. Add `--share` to replace local paths with neutral labels:
 
 ```sh
 mount-identity-audit . --json > audit.json
@@ -112,7 +112,7 @@ The process never runs `chown`, edits configuration, pulls an image, creates a
 container, or starts one. An audit makes at most three read-only runtime calls.
 Those calls use `info`, `image inspect`, or rootless Podman identity maps.
 
-## What it understands
+## Supported configuration and permission inputs
 
 - JSON-with-comments Dev Container files;
 - `remoteUser`, `containerUser`, `image`, `build`, `workspaceFolder`,
@@ -152,9 +152,14 @@ npm run lint
 npm run build
 ```
 
-`npm test` runs Rust unit, integration, claim, and browser tests. `npm run build`
-produces the release binary and the deployable site at `dist/site`. Run the
-site locally with `npm run dev`.
+Run all repository checks:
+
+```sh
+npm test
+```
+
+`npm run build` produces the release binary and the deployable site at
+`dist/site`. Run the site locally with `npm run dev`.
 
 To build only one artifact:
 

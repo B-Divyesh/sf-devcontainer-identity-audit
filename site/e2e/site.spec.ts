@@ -9,7 +9,7 @@ test("loads without console errors and exposes the page structure", async ({ pag
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.locator("main")).toHaveCount(1);
   await expect(page.getByRole("img", { name: /host computer and container workspace/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check mount permissions" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -27,9 +27,33 @@ test("keeps all three required facts in the cold first viewport", async ({ page 
   }
 });
 
+test("query demo is isolated, labelled, and moves focus to the sample heading", async ({ page }) => {
+  await page.goto("/?demo=1#demo");
+  await expect(page.getByText("Demo — sample data, nothing is saved")).toBeVisible();
+  await expect(page.locator("#status-stamp")).toHaveText("fail");
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+  await page.getByRole("button", { name: "Load safe example" }).click();
+  await expect(page.locator("#status-stamp")).toHaveText("pass");
+  await page.getByRole("button", { name: "Reset demo" }).click();
+  await expect(page.locator("#status-stamp")).toHaveText("fail");
+  await page.getByRole("link", { name: "Open blank browser check" }).click();
+  await expect(page).toHaveURL(/\/#demo$/);
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+});
+
+test("forward, back, and fragment navigation focus the destination heading", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Try it with sample data" }).click();
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeFocused();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Check mount permissions before container startup" })).toBeFocused();
+  await page.goto("/#how");
+  await expect(page.getByRole("heading", { name: "Check the configuration, map, and workspace" })).toBeFocused();
+});
+
 test("predicts a mismatch then a safe keep-id mapping", async ({ page }) => {
   await page.goto("/#demo");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await expect(page.locator("#mapped-id")).toContainText("100999:100999");
   await page.getByRole("button", { name: "Load safe example" }).click();
@@ -40,7 +64,7 @@ test("predicts a mismatch then a safe keep-id mapping", async ({ page }) => {
 test("loads every safe-example value after a validation error", async ({ page }) => {
   await page.goto("/demo/");
   await page.getByLabel("Directory mode").fill("0899");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.getByRole("alert")).toContainText("octal digits");
   await page.getByLabel("Owner UID").fill("3000");
   await page.getByLabel("Owner GID").fill("3001");
@@ -73,7 +97,7 @@ test("rejects the reserved Linux identity in direct Docker mode", async ({ page 
   }
   await page.getByLabel("Directory mode").fill("0777");
   await page.locator("#runtime").selectOption("docker");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.getByRole("alert")).toContainText("reserved 4294967295");
   await expect(page.locator("#status-stamp")).toHaveText("Ready");
 });
@@ -95,9 +119,9 @@ test("fits the viewport and keeps controls reachable", async ({ page }, testInfo
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.getByRole("link", { name: "Try it with sample data" }).click();
-  await expect(page.getByRole("heading", { name: "Inspect the sample mount mismatch" })).toBeInViewport();
-  await page.getByRole("button", { name: "Run preflight" }).scrollIntoViewIfNeeded();
-  await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeInViewport();
+  await page.getByRole("button", { name: "Check mount permissions" }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("button", { name: "Check mount permissions" })).toBeVisible();
 });
 
 test("turns the adapter comparison into labelled rows at 390px", async ({ page }, testInfo) => {
@@ -145,7 +169,7 @@ test("reflows at 200% mobile text size without clipping", async ({ page }, testI
   expect(clipped).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   await expect(page.locator("#result-title")).toHaveText("Mount mismatch predicted");
   await page.getByRole("button", { name: "Load safe example" }).click();
   await expect(page.locator("#result-title")).toHaveText("Workspace is writable");
@@ -158,10 +182,10 @@ test("supports the primary flow with only the keyboard", async ({ page }) => {
   await page.keyboard.press("Enter");
 
   for (let index = 0; index < 20; index += 1) {
-    if (await page.getByRole("button", { name: "Run preflight" }).evaluate((element) => element === document.activeElement)) break;
+    if (await page.getByRole("button", { name: "Check mount permissions" }).evaluate((element) => element === document.activeElement)) break;
     await page.keyboard.press("Tab");
   }
-  await expect(page.getByRole("button", { name: "Run preflight" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Check mount permissions" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await page.keyboard.press("Tab");
@@ -189,7 +213,7 @@ test("keeps demo data local and stores no user values", async ({ page, context }
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("/");
   await page.getByLabel("Owner UID").fill("1234");
-  await page.getByRole("button", { name: "Run preflight" }).click();
+  await page.getByRole("button", { name: "Check mount permissions" }).click();
   expect(requests.join("\n")).not.toContain("1234");
   expect(requests.every((request) => new URL(request).origin === new URL(page.url()).origin)).toBe(true);
   expect(await context.cookies()).toEqual([]);
@@ -248,9 +272,9 @@ test("demo resets sample state and exits to the real calculator", async ({ page 
   await page.getByRole("button", { name: "Reset demo" }).click();
   await expect(page.locator("#status-stamp")).toHaveText("fail");
   await expect(page.getByLabel("Podman user namespace")).toHaveValue("default");
-  await page.getByRole("link", { name: "Start for real" }).click();
+  await page.getByRole("link", { name: "Open blank browser check" }).click();
   await expect(page).toHaveURL(/\/#demo$/);
-  await expect(page.getByRole("heading", { name: "Test an identity mapping" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Check numeric workspace access" })).toBeVisible();
 });
 
 test("every route exposes complete metadata and the standard shell", async ({ page }) => {
@@ -261,6 +285,6 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · repair-7");
+    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-1");
   }
 });

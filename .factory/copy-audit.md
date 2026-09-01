@@ -1,85 +1,116 @@
-# Landing-page copy audit
+# Copy audit
 
 Audited 2026-09-01 against `site/index.html`, `site/src/main.ts`, and
-`site/src/audit.ts`. Counts use whitespace-separated words. UI labels and table
-fragments are listed separately because they are not sentences.
+`README.md`. Counts use this tokenizer: every whitespace-delimited token that
+contains a Unicode letter or number counts once; punctuation does not. Headings,
+buttons, navigation, field labels, table cells, and code examples are checked
+separately because they are not sentences.
 
-## Visible prose
+## Landing sentences
 
 | Words | Sentence |
 | ---: | --- |
 | 2 | You’re offline. |
-| 7 | The demo still works locally; install links may not. |
+| 9 | The demo still works locally; install links may not. |
+| 5 | Checks without starting a container. |
 | 6 | Check mount permissions before container startup. |
 | 17 | For developers using Dev Containers or rootless Podman who need a writable workspace on the first open. |
 | 6 | Runs a known rootless Podman mismatch. |
 | 5 | Free under the MIT License. |
 | 9 | The browser sample works offline after the first visit. |
-| 7 | The browser demo sends no project data. |
+| 7 | The browser sample sends no project data. |
 | 10 | Host identity and container identity meet at one bind mount. |
 | 14 | This browser check uses the same owner, group, and mode rules as the CLI. |
-| 6 | It stores and sends nothing you enter. |
-| 11 | Three or four octal digits, such as 0755 or 0775. |
-| 9 | Use numeric identities—the CLI refuses to guess named users. |
-| 11 | Enter the caller identity and range starts from `/etc/subuid` and `/etc/subgid`. |
-| 8 | Run the sample mismatch or load the safe example. |
-| 11 | The report will explain the effective host identity and exact permission branch. |
+| 7 | It stores and sends nothing you enter. |
+| 10 | Three or four octal digits, such as 0755 or 0775. |
+| 10 | Use numeric identities—the CLI refuses to guess named users. |
+| 11 | Enter the caller identity and range starts from /etc/subuid and /etc/subgid. |
+| 9 | Run the sample mismatch or load the safe example. |
+| 12 | The report will explain the effective host identity and exact permission branch. |
 | 12 | Find the remote user and workspace bind in JSONC or Compose metadata. |
 | 12 | Ask Docker or Podman for runtime metadata and rootless user namespace ranges. |
 | 12 | Compare the effective host UID/GID with owner, group, and other permission bits. |
 | 6 | Docker and Podman are separate cases. |
 | 7 | The report names the mapping it used. |
-| 12 | It never treats “container user 1000” as “host user 1000” without evidence. |
-| 17 | The audit does not inspect ACLs, security labels, remote filesystem policy, or changes made while a container starts. |
+| 12 | It never treats container user 1000 as host user 1000 without evidence. |
+| 18 | The audit does not inspect ACLs, security labels, remote filesystem policy, or changes made while a container starts. |
 | 6 | It never changes ownership or permissions. |
-| 9 | The browser sample stays in memory and sends no project data. |
-| 7 | Recorded from the real binary with `mount-identity-audit --demo`. |
-| 10 | Demo — bundled sample data; your project was not read or changed. |
-| 12 | The mapped remote identity can read but cannot write the workspace. |
+| 11 | The browser sample stays in memory and sends no project data. |
+| 5 | Example output from mount-identity-audit --demo. |
 | 6 | Local identity evidence for mounted workspaces. |
 
-## Dynamic result and error prose
+## README sentences
 
-| Maximum words | Copy family |
+| Words | Sentence |
 | ---: | --- |
-| 10 | Numeric fields explain that values must be non-negative numbers. |
-| 10 | Reserved-ID errors require a value below Linux’s `4294967295` sentinel. |
-| 12 | Mode errors require three or four octal digits and give `0755` as an example. |
-| 11 | A passing report says the mapped identity can read, write, and traverse the workspace. |
-| 12 | A passing remedy says no ownership change is indicated and asks for a real CLI check. |
-| 10 | A read-only report states that the mount flag overrides matching ownership. |
-| 11 | Its remedy says to remove that flag only when workspace edits are intended. |
-| 10 | A read failure states that the mapped identity cannot read and traverse the directory. |
-| 13 | A write failure states that the identity can read but cannot create or edit entries. |
-| 13 | Remedies name either Podman keep-id, the workspace owner, or deliberate host group access. |
-| 9 | The unexpected-error fallback asks the user to reload and try again. |
+| 15 | Mount Identity Audit checks bind-mount ownership before a Dev Container or rootless Podman workspace starts. |
+| 10 | It compares host permissions with the mapped numeric container identity. |
+| 15 | It is for developers and CI maintainers who want a numeric ownership report before startup. |
+| 5 | The CLI needs no account. |
+| 7 | It includes no HTTP or telemetry client. |
+| 11 | Docker or Podman is optional when every identity is supplied numerically. |
+| 10 | Run one command without pointing the audit at your project. |
+| 9 | The command copies examples/mismatch/ into a unique temporary directory. |
+| 8 | It prints that path and audits the copy. |
+| 19 | The known write mismatch returns FAIL with exit code 1, the same as a project with a confirmed mismatch. |
+| 17 | The browser sample also accepts the host caller identity and the allocated /etc/subuid and /etc/subgid range starts. |
+| 22 | These values let it distinguish the identity kept by Podman keep-id from other remote users, which still map through the subordinate ranges. |
+| 8 | The CLI reads the live runtime map instead. |
+| 5 | Run it from a repository. |
+| 7 | The CLI discovers .devcontainer/devcontainer.json, .devcontainer.json, or devcontainer.json. |
+| 10 | It follows Compose metadata when the configuration names a service. |
+| 18 | Use an explicit numeric identity when an image stores only a user name or is not available locally. |
+| 4 | Use --json for scripts. |
+| 9 | Add --share to replace local paths with neutral labels. |
+| 12 | --share replaces host paths, repository names, and config paths with neutral labels. |
+| 7 | JSON output is versioned with schema_version: 1. |
+| 16 | The process never runs chown, edits configuration, pulls an image, creates a container, or starts one. |
+| 9 | An audit makes at most three read-only runtime calls. |
+| 11 | Those calls use info, image inspect, or rootless Podman identity maps. |
+| 10 | An explicit Dev Container remoteUser is the intended editor identity. |
+| 12 | It stays authoritative when a selected Compose service declares a different user. |
+| 7 | Otherwise, that Compose service user overrides containerUser. |
+| 12 | The CLI uses containerUser only when neither of those values is present. |
+| 16 | Named image users and UID-only values do not prove a primary GID without running a container. |
+| 14 | The audit returns UNKNOWN and requests --remote-user UID:GID; it never invents a same-number group. |
+| 11 | Linux reserves ID 4294967295, so the CLI rejects it as UNKNOWN. |
+| 15 | POSIX ACLs, security labels, remote filesystems, and startup mutations remain outside the v1 permission model. |
+| 6 | Every detailed report states these limits. |
+| 10 | Build-backed configurations without an explicit numeric user also return UNKNOWN. |
+| 13 | The CLI never trusts a possibly stale image tag as current build evidence. |
+| 12 | Requirements: a Linux host (or WSL2), stable Rust, Node 20+, and npm. |
+| 12 | Docker Desktop filesystem translation on native macOS/Windows is outside the v1 model. |
+| 4 | Run all repository checks. |
+| 13 | npm run build produces the release binary and the deployable site at dist/site. |
+| 8 | Run the site locally with npm run dev. |
+| 16 | Prepare the unpublished registry artifact with cargo package; publishing is intentionally left to the Param Factory. |
+| 8 | The CLI includes no network or telemetry client. |
+| 12 | The browser sample stores no entered values and sends no project data. |
+| 7 | After the first visit, it reloads offline. |
+| 8 | Use --share before attaching reports to public issues. |
+| 7 | Every public promise is listed in .factory/claims.json. |
+| 14 | Run one claim with its listed command or run all coverage with npm test. |
 
-## UI labels and fragments
+## Labels, terminology, and results
 
-Primary terms stay short and literal: `Try it with sample data`, `Copy`,
-`Run preflight`, `Load safe example`, `Read config`, `Read the map`,
-`Read the inode`, `Reset demo`, `Start for real`, `PASS`, `FAIL`, and `UNKNOWN`.
-The numbered decorative labels from the previous page were removed.
+Literal labels: `Try it with sample data`, `Copy install command`, `Check mount
+permissions`, `Permission report`, `Check numeric workspace access`, `Read the
+runtime identity map`, `Read workspace ownership and mode`, `Reset demo`, and
+`Open blank browser check`.
 
-## Banned-word and length result
-
-- Sentences over 22 words: **0**.
-- Banned terms: **0** (`leverage`, `seamless`, `effortless`, `robust`,
-  `powerful`, `intuitive`, `reimagine`, `supercharge`, `unlock`, `delightful`,
-  `journey`, `ecosystem`, `AI-powered`).
-- First screen: the six-word job headline, 17-word audience sentence, sample
-  action, next-step note, and three plain facts all fit in one screen.
-
-## Terminology table
-
-| Concept | One term used |
+| Concept | Term |
 | --- | --- |
 | Host directory mounted into a container | workspace |
 | UID/GID transformation | identity map |
-| Container development configuration | Dev Container |
-| Rootless Podman preservation mode | keep-id |
+| Container configuration | Dev Container |
+| Rootless preservation mode | keep-id |
 | Browser try-out | browser sample |
-| Shipped command-line try-out | bundled sample |
-| Result that proves access | PASS |
-| Result that proves an access problem | FAIL |
-| Result without enough evidence | UNKNOWN |
+| Command-line try-out | bundled sample |
+| Access results | PASS, FAIL, UNKNOWN |
+
+## Result
+
+- Sentences over 22 words: **0**.
+- Banned terms: **0**.
+- The first screen contains the job headline, audience sentence, sample action,
+  next-step note, and three plain facts at 390 px and desktop widths.

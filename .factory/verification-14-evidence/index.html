@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3ebdd" />
+    <meta name="description" content="Check whether a Dev Container or rootless Podman workspace will be writable before startup." />
+    <link rel="canonical" href="https://devcontainer-identity-audit.sociobot.in/" />
+    <meta property="og:title" content="Mount Identity Audit — Check mount permissions" />
+    <meta property="og:description" content="Check whether a Dev Container or rootless Podman workspace will be writable before startup." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://devcontainer-identity-audit.sociobot.in/" />
+    <meta property="og:image" content="https://devcontainer-identity-audit.sociobot.in/social-card.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Mount Identity Audit — Check mount permissions" />
+    <meta name="twitter:description" content="Check whether a Dev Container or rootless Podman workspace will be writable before startup." />
+    <meta name="twitter:image" content="https://devcontainer-identity-audit.sociobot.in/social-card.webp" />
+    <title>Mount Identity Audit — Check mount permissions</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script type="module" crossorigin src="/assets/route-BbCWzxq5.js"></script>
+    <script type="module" crossorigin src="/assets/main-ClpJTgNz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/route-D0KetCu2.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <p class="route-status" id="route-status" aria-live="polite" aria-atomic="true"></p>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Mount Identity Audit home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Mount identity audit</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="/demo/">Demo</a>
+        <a href="#how">How it works</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit">Source (GitHub)</a>
+      </nav>
+    </header>
+
+    <aside class="demo-banner" id="query-demo-banner" aria-label="Demo controls" hidden>
+      <p>Demo — sample data, nothing is saved</p>
+      <button id="reset-demo" type="button">Reset demo</button>
+      <a href="/#demo">Open blank browser check</a>
+    </aside>
+
+    <div class="offline-banner" id="offline-banner" role="status" hidden>
+      You’re offline. The demo still works locally; install links may not.
+    </div>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span aria-hidden="true">●</span> Checks without starting a container · v0.1.0</p>
+          <h1 id="hero-title" tabindex="-1">Check mount permissions before container startup</h1>
+          <p class="lede">For developers using Dev Containers or rootless Podman who need a writable workspace on the first open.</p>
+          <div class="hero-actions">
+            <a class="primary-button link-button" href="/?demo=1#demo">Try it with sample data</a>
+            <span>Runs a known rootless Podman mismatch.</span>
+          </div>
+          <ul class="plain-facts">
+            <li>Free under the MIT License.</li>
+            <li>The browser sample works offline after the first visit.</li>
+            <li>The browser sample sends no project data.</li>
+          </ul>
+          <div class="install-strip" aria-label="Install command">
+            <code tabindex="0">cargo install --git https://github.com/B-Divyesh/sf-devcontainer-identity-audit</code>
+            <button class="copy-button" type="button" data-copy="cargo install --git https://github.com/B-Divyesh/sf-devcontainer-identity-audit">
+              <span class="copy-label">Copy install command</span>
+            </button>
+          </div>
+          <p class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></p>
+        </div>
+        <figure class="hero-art">
+          <img src="/mount-ledger-6b7fee8c.webp" width="1200" height="800" alt="A halftone technical cutaway showing a host computer and container workspace joined through aligned identity tags." fetchpriority="high" />
+          <figcaption>A bind mount maps the container identity to a host identity.</figcaption>
+        </figure>
+      </section>
+
+      <aside class="proof-strip" aria-label="Safety guarantees">
+        <span><strong>0</strong> containers started</span>
+        <span><strong>0</strong> files changed</span>
+        <span><strong>3</strong> read-only runtime calls, at most</span>
+      </aside>
+
+      <section class="demo-section" id="demo" aria-labelledby="demo-title">
+        <div class="section-intro">
+          <p class="section-number">Browser sample</p>
+          <h2 id="demo-title" tabindex="-1">Check numeric workspace access</h2>
+          <p>This browser check uses the same owner, group, and mode rules as the CLI. It stores and sends nothing you enter.</p>
+        </div>
+
+        <div class="audit-desk">
+          <form id="audit-form" class="audit-form" novalidate>
+            <fieldset>
+              <legend>Host workspace</legend>
+              <div class="field-pair">
+                <label>Owner UID <input id="owner-uid" name="ownerUid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
+                <label>Owner GID <input id="owner-gid" name="ownerGid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
+              </div>
+              <label>Directory mode <input id="mode" name="mode" inputmode="numeric" value="0755" required aria-describedby="mode-hint form-error" /></label>
+              <small id="mode-hint">Three or four octal digits, such as 0755 or 0775.</small>
+            </fieldset>
+
+            <fieldset>
+              <legend>Remote user</legend>
+              <div class="field-pair">
+                <label>Remote UID <input id="remote-uid" name="remoteUid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
+                <label>Remote GID <input id="remote-gid" name="remoteGid" inputmode="numeric" value="1000" required aria-describedby="identity-hint form-error" /></label>
+              </div>
+              <small id="identity-hint">Use numeric identities—the CLI refuses to guess named users.</small>
+              <label>Runtime
+                <select id="runtime" name="runtime">
+                  <option value="podman">Rootless Podman</option>
+                  <option value="docker">Docker / rootful Podman</option>
+                </select>
+              </label>
+              <label id="userns-label">Podman user namespace
+                <select id="userns" name="userns">
+                  <option value="default">Default subuid map</option>
+                  <option value="keep-id">keep-id</option>
+                  <option value="host">host</option>
+                </select>
+              </label>
+              <fieldset id="rootless-map" class="nested-fieldset">
+                <legend>Rootless identity map</legend>
+                <div class="field-pair">
+                  <label>Host caller UID <input id="host-uid" name="hostUid" inputmode="numeric" value="1000" required aria-describedby="map-hint form-error" /></label>
+                  <label>Host caller GID <input id="host-gid" name="hostGid" inputmode="numeric" value="1000" required aria-describedby="map-hint form-error" /></label>
+                  <label>Subordinate UID start <input id="subuid-start" name="subuidStart" inputmode="numeric" value="100000" required aria-describedby="map-hint form-error" /></label>
+                  <label>Subordinate GID start <input id="subgid-start" name="subgidStart" inputmode="numeric" value="100000" required aria-describedby="map-hint form-error" /></label>
+                </div>
+                <small id="map-hint">Enter the caller identity and range starts from <code>/etc/subuid</code> and <code>/etc/subgid</code>.</small>
+              </fieldset>
+              <label class="check-label"><input id="read-only" name="readOnly" type="checkbox" /> Mount is declared read-only</label>
+            </fieldset>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Check mount permissions</button>
+              <button class="text-button" id="load-safe" type="button">Load safe example</button>
+            </div>
+            <p class="form-error" id="form-error" role="alert" tabindex="-1" hidden></p>
+          </form>
+
+          <section class="audit-result is-empty" id="audit-result" aria-labelledby="result-title" aria-live="polite">
+            <div class="result-head">
+              <span class="status-stamp" id="status-stamp">Ready</span>
+              <div>
+                <p class="result-kicker">Permission report</p>
+                <h3 id="result-title">Waiting for an identity</h3>
+              </div>
+            </div>
+            <p id="result-summary">Run the sample mismatch or load the safe example. The report will explain the effective host identity and exact permission branch.</p>
+            <dl class="identity-grid" id="identity-grid" hidden>
+              <div><dt>Remote user</dt><dd id="container-id">—</dd></div>
+              <div><dt>Maps to host</dt><dd id="mapped-id">—</dd></div>
+              <div><dt>Workspace</dt><dd id="workspace-id">—</dd></div>
+              <div><dt>Access</dt><dd id="access-id">—</dd></div>
+            </dl>
+            <div class="remedy" id="remedy" hidden>
+              <p class="result-kicker">Safe next step</p>
+              <p id="remedy-text"></p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="method-section" id="how" aria-labelledby="method-title">
+        <div class="section-intro">
+          <p class="section-number">How it works</p>
+          <h2 id="method-title" tabindex="-1">Check the configuration, map, and workspace</h2>
+        </div>
+        <ol class="method-list">
+          <li><span class="step-index">A</span><h3>Read the configuration</h3><p>Find the remote user and workspace bind in JSONC or Compose metadata.</p><code>devcontainer.json → compose.yml</code></li>
+          <li><span class="step-index">B</span><h3>Read the runtime identity map</h3><p>Ask Docker or Podman for runtime metadata and rootless user namespace ranges.</p><code>podman unshare … uid_map</code></li>
+          <li><span class="step-index">C</span><h3>Read workspace ownership and mode</h3><p>Compare the effective host UID/GID with owner, group, and other permission bits.</p><code>0755 · 1000:1000</code></li>
+        </ol>
+      </section>
+
+      <section class="adapter-section" aria-labelledby="adapter-title">
+        <div class="section-intro">
+          <p class="section-number">Runtime differences</p>
+          <h2 id="adapter-title">Docker and Podman are separate cases.</h2>
+          <p>The report names the mapping it used. It never treats “container user 1000” as “host user 1000” without evidence.</p>
+        </div>
+        <div class="comparison" role="region" aria-label="Runtime behavior comparison" tabindex="0">
+          <table>
+            <thead><tr><th scope="col">Adapter</th><th scope="col">Identity evidence</th><th scope="col">What stays untouched</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Docker</th><td data-label="Identity evidence">Direct IDs when userns-remap is off; image user metadata</td><td data-label="What stays untouched">Images, containers, host ownership</td></tr>
+              <tr><th scope="row">Rootless Podman</th><td data-label="Identity evidence">Live uid_map/gid_map plus keep-id or host intent</td><td data-label="What stays untouched">Subuid config, namespaces, bind mount</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="limits-section" aria-labelledby="limits-title">
+        <div class="section-intro">
+          <p class="section-number">Limits and privacy</p>
+          <h2 id="limits-title">Know what the audit does not check</h2>
+          <p>The audit does not inspect ACLs, security labels, remote filesystem policy, or changes made while a container starts.</p>
+        </div>
+        <p>It never changes ownership or permissions. The browser sample stays in memory and sends no project data.</p>
+      </section>
+
+      <section class="install-section" aria-labelledby="install-title">
+        <p class="section-number">CLI demo</p>
+        <h2 id="install-title">Run the same check in a terminal</h2>
+        <figure class="terminal-recording">
+          <img src="/demo-terminal.svg" width="900" height="420" alt="Terminal recording of the bundled CLI sample reporting a mount permission failure." />
+          <figcaption>Example output from <code>mount-identity-audit --demo</code>.</figcaption>
+          <details><summary>Read the terminal transcript</summary><pre><code>$ mount-identity-audit --demo
+DEMO — bundled sample data; your project was not read or changed.
+MOUNT IDENTITY AUDIT                         FAIL
+workspace      read + write + traverse       FAIL
+The mapped remote identity can read but cannot write the workspace.</code></pre></details>
+        </figure>
+        <div class="cta-row">
+          <a class="primary-button link-button" href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit">Read the source</a>
+          <a class="text-link" href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit#usage">See every option <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div><span class="brand-mark" aria-hidden="true"></span><p>Check whether a remote user can write to a mounted workspace.</p></div>
+      <nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/B-Divyesh/sf-devcontainer-identity-audit/blob/main/LICENSE">MIT license</a></nav>
+      <p>Built by <a href="https://sociobot.in">Param Factory</a> · <span class="build-identity" data-build-identity>v0.1.0 · 9ff3773b87a1</span></p>
+    </footer>
+
+  </body>
+</html>

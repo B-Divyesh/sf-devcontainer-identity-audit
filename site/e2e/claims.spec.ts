@@ -327,6 +327,73 @@ esac
   rmSync(root, { recursive: true, force: true });
 });
 
+test("packed CLI rejects unresolved Docker userns-remap IDs @claim:docker-userns-remap", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "the packaged CLI consumer regression runs once");
+  test.setTimeout(120_000);
+  const packed = packedCliPath();
+  const root = project('{ "remoteUser": "1000:1000" }');
+  const runtime = join(root, "docker-userns-fixture");
+  writeFileSync(runtime, `#!/bin/sh
+case "$1" in
+  info) printf '%s\\n' '{"ServerVersion":"27.3.1","SecurityOptions":["name=userns"]}' ;;
+  *) exit 8 ;;
+esac
+`);
+  chmodSync(runtime, 0o755);
+  if (process.getuid?.() === 0) chownSync(root, 1000, 1000);
+  try {
+    const output = spawnSync(
+      packed.path,
+      [root, "--runtime", "docker", "--runtime-bin", runtime, "--json"],
+      { encoding: "utf8" }
+    );
+    const report = JSON.parse(output.stdout);
+    expect(output.status).toBe(2);
+    expect(report.verdict).toBe("unknown");
+    expect(report.identity.host_uid).toBeNull();
+    expect(report.identity.host_gid).toBeNull();
+    expect(report.summary).toContain("userns-remap");
+    expect(report.checks[0].observed).toContain("userns-remap");
+    expect(report.checks[0].status).toBe("warning");
+    expect(report.remediations.join(" ")).toContain("will not assume direct host IDs");
+    await page.goto("/");
+    await expect(page.getByText("Direct IDs when userns-remap is off; image user metadata")).toBeVisible();
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(packed.sandbox, { recursive: true, force: true });
+  }
+});
+
+test("packed CLI gives mount-specific read-only recovery @claim:read-only-remediation", ({}, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "the packaged CLI consumer regression runs once");
+  test.setTimeout(120_000);
+  const packed = packedCliPath();
+  const uid = process.getuid?.() ?? 0;
+  const gid = process.getgid?.() ?? 0;
+  const roots = ["readonly", "read_only", "ro"].map((flag) =>
+    project(`{ "remoteUser": "${uid}:${gid}", "workspaceMount": "source=\${localWorkspaceFolder},target=/workspace,type=bind,${flag}" }`)
+  );
+  try {
+    for (const root of roots) {
+      const output = spawnSync(
+        packed.path,
+        [root, "--runtime", "docker", "--no-runtime", "--json"],
+        { encoding: "utf8" }
+      );
+      const report = JSON.parse(output.stdout);
+      expect(output.status).toBe(1);
+      expect(report.verdict).toBe("fail");
+      expect(report.workspace.declared_read_only).toBe(true);
+      expect(report.remediations).toHaveLength(1);
+      expect(report.remediations[0]).toContain("`readonly`, `read_only`, or `ro`");
+      expect(report.remediations[0]).not.toMatch(/UID:GID|group\/mode|userns/);
+    }
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+    rmSync(packed.sandbox, { recursive: true, force: true });
+  }
+});
+
 test("unproven identities never receive a safe verdict @claim:conservative-identities", async ({ page }) => {
   const configs = [
     '{ remoteUser: "vscode" }',

@@ -212,16 +212,27 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
         }
     };
 
-    let runtime_observed = match (&runtime_info.version, runtime_info.rootless) {
-        (Some(version), Some(true)) => format!("{} {version} (rootless)", runtime_info.kind),
-        (Some(version), _) => format!("{} {version}", runtime_info.kind),
-        (None, _) => format!("{} (not inspected)", runtime_info.kind),
+    let runtime_observed = match (
+        &runtime_info.version,
+        runtime_info.rootless,
+        runtime_info.userns_remap,
+    ) {
+        (Some(version), _, true) => {
+            format!("{} {version} (userns-remap)", runtime_info.kind)
+        }
+        (Some(version), Some(true), false) => {
+            format!("{} {version} (rootless)", runtime_info.kind)
+        }
+        (Some(version), _, false) => format!("{} {version}", runtime_info.kind),
+        (None, _, _) => format!("{} (not inspected)", runtime_info.kind),
     };
     checks.push(Check {
         name: "runtime".into(),
         expected: runtime_info.kind.clone(),
         observed: runtime_observed,
-        status: if runtime_info.inspected {
+        status: if runtime_info.userns_remap {
+            "warning"
+        } else if runtime_info.inspected {
             "pass"
         } else {
             "warning"
@@ -423,7 +434,19 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
                 observed: error.clone(),
                 status: "unknown".into(),
             });
-            remediations.push("For rootless Podman, use --userns=keep-id or ensure `podman unshare` can read the live UID/GID maps.".into());
+            if runtime_info.kind == "docker" && runtime_info.userns_remap {
+                remediations.push(
+                    "Inspect Docker's userns-remap configuration and subordinate-ID allocation. This version will not assume direct host IDs."
+                        .into(),
+                );
+            } else if runtime_info.kind == "docker" {
+                remediations.push(
+                    "Rootless Docker identity maps are not supported in this version. Verify the mapped host IDs before relying on workspace access."
+                        .into(),
+                );
+            } else {
+                remediations.push("For rootless Podman, use --userns=keep-id or ensure `podman unshare` can read the live UID/GID maps.".into());
+            }
             return unknown_report_with_runtime(
                 options.share,
                 format!("The runtime identity map could not be proven: {error}"),
@@ -481,13 +504,20 @@ fn audit_unredacted(options: AuditOptions) -> AuditReport {
     };
 
     if verdict == Verdict::Fail {
-        if runtime_info.kind == "podman" && runtime_info.rootless == Some(true) {
-            remediations.push("Prefer `\"runArgs\": [\"--userns=keep-id\"]` so the calling developer keeps the same identity in rootless Podman.".into());
+        if loaded.read_only {
+            remediations.push(
+                "Review the workspace mount and remove `readonly`, `read_only`, or `ro` only if workspace edits are intended."
+                    .into(),
+            );
+        } else {
+            if runtime_info.kind == "podman" && runtime_info.rootless == Some(true) {
+                remediations.push("Prefer `\"runArgs\": [\"--userns=keep-id\"]` so the calling developer keeps the same identity in rootless Podman.".into());
+            }
+            remediations.push(format!(
+                "Choose a remote UID:GID that maps to workspace owner {owner_uid}:{owner_gid}, then verify with --remote-user {owner_uid}:{owner_gid}."
+            ));
+            remediations.push("If team write access is intentional, change the project group/mode explicitly on the host; this tool never changes ownership or permissions.".into());
         }
-        remediations.push(format!(
-            "Choose a remote UID:GID that maps to workspace owner {owner_uid}:{owner_gid}, then verify with --remote-user {owner_uid}:{owner_gid}."
-        ));
-        remediations.push("If team write access is intentional, change the project group/mode explicitly on the host; this tool never changes ownership or permissions.".into());
     }
 
     AuditReport {

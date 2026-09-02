@@ -63,6 +63,20 @@
     "sandbox": "direct Docker fixture and recording rootless Podman adapter"
   },
   {
+    "id": "docker-userns-remap",
+    "claim": "Docker userns-remap returns UNKNOWN unless its host UID/GID map is resolved.",
+    "where": "landing runtime table and README supported inputs and limits",
+    "test": "npm run test:claims -- --grep @claim:docker-userns-remap",
+    "sandbox": "fresh packed and installed CLI; mode-0755 workspace owned 1000:1000; Docker info adapter reporting name=userns"
+  },
+  {
+    "id": "read-only-remediation",
+    "claim": "Read-only mount failures recommend reviewing readonly, read_only, or ro instead of changing identity or host mode.",
+    "where": "README supported inputs and limits",
+    "test": "npm run test:claims -- --grep @claim:read-only-remediation",
+    "sandbox": "fresh packed and installed CLI; matching workspace identity; three workspaceMount read-only spellings"
+  },
+  {
     "id": "conservative-identities",
     "claim": "Named, UID-only, build-backed, and reserved Linux identities return UNKNOWN until a numeric UID:GID is proven.",
     "where": "README limits and browser validation",

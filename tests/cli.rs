@@ -586,3 +586,110 @@ fn rootless_podman_split_keep_id_preserves_the_host_identity() {
     assert_eq!(json["identity"]["host_gid"], gid);
     assert_eq!(json["verdict"], "pass");
 }
+
+#[test]
+fn docker_userns_remap_never_assumes_direct_host_ids() {
+    let temp = tempfile::tempdir().unwrap();
+    let current_uid = Command::new("id").arg("-u").output().unwrap().stdout;
+    let current_uid = String::from_utf8(current_uid)
+        .unwrap()
+        .trim()
+        .parse::<u32>()
+        .unwrap();
+    let current_gid = Command::new("id").arg("-g").output().unwrap().stdout;
+    let current_gid = String::from_utf8(current_gid)
+        .unwrap()
+        .trim()
+        .parse::<u32>()
+        .unwrap();
+    let (uid, gid) = if current_uid == 0 {
+        (1_000, 1_000)
+    } else {
+        (current_uid, current_gid)
+    };
+
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        format!(r#"{{"remoteUser":"{uid}:{gid}"}}"#),
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o755)).unwrap();
+    if current_uid == 0 {
+        let status = Command::new("chown")
+            .arg(format!("{uid}:{gid}"))
+            .arg(temp.path())
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    let runtime = temp.path().join("docker-userns-fixture");
+    fs::write(
+        &runtime,
+        r#"#!/bin/sh
+case "$1" in
+  info) printf '%s\n' '{"ServerVersion":"27.3.1","SecurityOptions":["name=userns"]}' ;;
+  *) exit 8 ;;
+esac
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(&runtime, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--runtime-bin"])
+        .arg(&runtime)
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(2));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["identity"]["host_uid"], serde_json::Value::Null);
+    assert_eq!(json["identity"]["host_gid"], serde_json::Value::Null);
+    assert!(json["summary"].as_str().unwrap().contains("userns-remap"));
+    assert!(
+        json["checks"][0]["observed"]
+            .as_str()
+            .unwrap()
+            .contains("userns-remap")
+    );
+    assert_eq!(json["checks"][0]["status"], "warning");
+    assert!(json["remediations"].to_string().contains("direct host IDs"));
+}
+
+#[test]
+fn read_only_mount_recommends_the_mount_flag_not_identity_changes() {
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join(".devcontainer")).unwrap();
+    fs::write(
+        temp.path().join(".devcontainer/devcontainer.json"),
+        r#"{
+            "remoteUser":"0:0",
+            "workspaceMount":"source=${localWorkspaceFolder},target=/workspace,type=bind,readonly"
+        }"#,
+    )
+    .unwrap();
+    fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o755)).unwrap();
+
+    let output = Command::new(binary())
+        .arg(temp.path())
+        .args(["--runtime", "docker", "--no-runtime", "--json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(1));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["verdict"], "fail");
+    assert_eq!(json["workspace"]["declared_read_only"], true);
+    let remediations = json["remediations"].as_array().unwrap();
+    assert_eq!(remediations.len(), 1);
+    let remediation = remediations[0].as_str().unwrap();
+    assert!(remediation.contains("`readonly`, `read_only`, or `ro`"));
+    assert!(!remediation.contains("UID:GID"));
+    assert!(!remediation.contains("group/mode"));
+    assert!(!remediation.contains("userns"));
+}

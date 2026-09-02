@@ -103,7 +103,7 @@ counts, sentences over 22 words, or banned terms.
 | 4 | JSON-with-comments Dev Container files; |
 | 10 | remoteUser, containerUser, image, build, workspaceFolder, workspaceMount, runArgs, dockerComposeFile, and service; |
 | 7 | Compose services.<name>.user, image, build, volumes, and read_only; |
-| 5 | Docker’s direct Linux ID mapping; |
+| 10 | Docker’s direct Linux ID mapping when daemon userns-remap is inactive; |
 | 19 | rootful Podman and rootless Podman’s live UID/GID maps, including both --userns=keep-id / --userns=host and split --userns keep-id / --userns host intent; |
 | 6 | host owner/group/mode and read-only mount declarations. |
 | 10 | An explicit Dev Container remoteUser is the intended editor identity. |
@@ -113,6 +113,11 @@ counts, sentences over 22 words, or banned terms.
 | 16 | Named image users and UID-only values do not prove a primary GID without running a container. |
 | 14 | The audit returns UNKNOWN and requests --remote-user UID:GID; it never invents a same-number group. |
 | 11 | Linux reserves ID 4294967295, so the CLI rejects it as UNKNOWN. |
+| 10 | Docker daemon userns-remap changes the host IDs behind container IDs. |
+| 12 | The CLI detects name=userns and returns UNKNOWN until that remap is resolved. |
+| 13 | It never reports matching container and host IDs as safe in this case. |
+| 15 | For a read-only workspace, the CLI recommends reviewing the mount's readonly, read_only, or ro setting. |
+| 12 | It does not suggest identity or host mode changes for that failure. |
 | 16 | Version 1 does not check POSIX ACLs, security labels, remote filesystems, or changes made during startup. |
 | 6 | Every detailed report states these limits. |
 | 10 | Build-backed configurations without an explicit numeric user also return UNKNOWN. |

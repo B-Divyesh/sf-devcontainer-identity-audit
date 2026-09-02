@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 2026-09-02
+
+- Return `UNKNOWN` when Docker reports daemon `userns-remap` instead of
+  assuming container IDs map directly to the host.
+- Give read-only mounts a configuration-specific recovery step without
+  suggesting unrelated identity or host permission changes.
+
 ## Unreleased - 2026-08-30
 
 - Corrected browser `keep-id` mapping for remote users that differ from the

@@ -15,6 +15,7 @@ pub struct RuntimeInfo {
     pub kind: String,
     pub version: Option<String>,
     pub rootless: Option<bool>,
+    pub userns_remap: bool,
     pub inspected: bool,
     pub executable: PathBuf,
 }
@@ -36,6 +37,7 @@ pub fn inspect(
             kind: kind.into(),
             version: None,
             rootless: if kind == "docker" { Some(false) } else { None },
+            userns_remap: false,
             inspected: false,
             executable: override_bin.unwrap_or(Path::new(kind)).to_path_buf(),
         });
@@ -106,16 +108,14 @@ fn inspect_one(choice: RuntimeChoice, executable: &Path) -> Result<RuntimeInfo, 
         lookup_bool(&value, &["host", "security", "rootless"])
             .or_else(|| lookup_bool(&value, &["Host", "Security", "Rootless"]))
     } else {
-        let serialized = value
-            .get("SecurityOptions")
-            .map(Value::to_string)
-            .unwrap_or_default();
-        Some(serialized.to_lowercase().contains("rootless"))
+        Some(docker_security_option(&value, "rootless"))
     };
+    let userns_remap = kind == "docker" && docker_security_option(&value, "userns");
     Ok(RuntimeInfo {
         kind: kind.into(),
         version,
         rootless,
+        userns_remap,
         inspected: true,
         executable: executable.to_path_buf(),
     })
@@ -156,6 +156,12 @@ pub fn map_identity(
     if info.kind == "docker" {
         if info.rootless == Some(true) {
             return Err("rootless Docker UID maps are not supported in v1".into());
+        }
+        if info.userns_remap {
+            return Err(
+                "Docker daemon userns-remap is active, but its host UID/GID map was not resolved"
+                    .into(),
+            );
         }
         return Ok((uid, gid));
     }
@@ -304,6 +310,24 @@ fn lookup_bool(value: &Value, path: &[&str]) -> Option<bool> {
     cursor.as_bool()
 }
 
+fn docker_security_option(value: &Value, expected: &str) -> bool {
+    value
+        .get("SecurityOptions")
+        .or_else(|| value.get("securityOptions"))
+        .and_then(Value::as_array)
+        .is_some_and(|options| {
+            options.iter().any(|option| {
+                option.as_str().is_some_and(|option| {
+                    let name = option
+                        .split(',')
+                        .find_map(|part| part.trim().strip_prefix("name="))
+                        .unwrap_or(option);
+                    name.eq_ignore_ascii_case(expected)
+                })
+            })
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -336,5 +360,16 @@ mod tests {
 
         assert_eq!(userns_value(&keep_id), Some("keep-id"));
         assert_eq!(userns_value(&host), Some("host"));
+    }
+
+    #[test]
+    fn detects_docker_user_namespace_security_option() {
+        let value: Value = serde_json::from_str(
+            r#"{"SecurityOptions":["name=seccomp,profile=builtin","name=userns"]}"#,
+        )
+        .unwrap();
+
+        assert!(docker_security_option(&value, "userns"));
+        assert!(!docker_security_option(&value, "rootless"));
     }
 }

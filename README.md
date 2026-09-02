@@ -118,7 +118,7 @@ Those calls use `info`, `image inspect`, or rootless Podman identity maps.
 - `remoteUser`, `containerUser`, `image`, `build`, `workspaceFolder`,
   `workspaceMount`, `runArgs`, `dockerComposeFile`, and `service`;
 - Compose `services.<name>.user`, `image`, `build`, `volumes`, and `read_only`;
-- Docker’s direct Linux ID mapping;
+- Docker’s direct Linux ID mapping when daemon `userns-remap` is inactive;
 - rootful Podman and rootless Podman’s live UID/GID maps, including both
   `--userns=keep-id` / `--userns=host` and split `--userns keep-id` /
   `--userns host` intent;
@@ -133,6 +133,14 @@ Named image users and UID-only values do not prove a primary GID without
 running a container. The audit returns `UNKNOWN` and requests
 `--remote-user UID:GID`; it never invents a same-number group. Linux reserves
 ID `4294967295`, so the CLI rejects it as `UNKNOWN`.
+
+Docker daemon `userns-remap` changes the host IDs behind container IDs. The CLI
+detects `name=userns` and returns `UNKNOWN` until that remap is resolved. It
+never reports matching container and host IDs as safe in this case.
+
+For a read-only workspace, the CLI recommends reviewing the mount's `readonly`,
+`read_only`, or `ro` setting. It does not suggest identity or host mode changes
+for that failure.
 
 Version 1 does not check POSIX ACLs, security labels, remote filesystems, or
 changes made during startup. Every detailed report states these limits.

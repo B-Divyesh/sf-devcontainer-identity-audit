@@ -1,1 +1,1 @@
-Check Dev Container and rootless Podman mount access before startup.
+Check workspace mount access before Dev Container or rootless Podman startup.

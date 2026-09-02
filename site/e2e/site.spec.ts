@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { BUILD_LABEL } from "../build-identity";
 
 test("loads without console errors and exposes the page structure", async ({ page }) => {
   const errors: string[] = [];
@@ -332,7 +333,8 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-3");
+    await expect(page.locator("footer [data-build-identity]")).toHaveText(BUILD_LABEL);
+    await expect(page.locator("footer")).not.toContainText("polish-3");
     await expect(page.locator("#route-status")).toHaveAttribute("aria-live", "polite");
   }
 });

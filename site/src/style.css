@@ -145,6 +145,7 @@ pre { overflow-x: auto; margin: 0; padding: 24px; font: 14px/1.65 var(--mono); }
 footer { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 48px; padding: 48px max(24px, calc((100% - 1180px) / 2)); border-top: 2px solid var(--ink); background: var(--sheet); font-size: 13px; }
 footer > div { display: flex; align-items: center; gap: 18px; }
 footer p { margin: 0; }
+.build-identity { overflow-wrap: anywhere; }
 .site-header a, footer a { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; }
 
 .legal-main { width: min(760px, calc(100% - 48px)); margin: 0 auto; padding: 80px 0 120px; }

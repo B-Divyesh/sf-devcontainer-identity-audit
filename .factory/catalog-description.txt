@@ -1,1 +1,1 @@
-Check workspace mount access before Dev Container or rootless Podman startup.
+Check whether a workspace mount is writable before Dev Container or rootless Podman startup.

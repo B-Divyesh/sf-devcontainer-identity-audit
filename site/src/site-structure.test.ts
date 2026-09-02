@@ -1,6 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  BUILD_ID,
+  BUILD_IDENTITY_MARKER,
+  BUILD_LABEL,
+  PACKAGE_VERSION,
+  injectBuildIdentity,
+  resolveBuildId
+} from "../build-identity";
 
 const site = resolve(import.meta.dirname, "..");
 const pages = ["index.html", "demo/index.html", "privacy/index.html", "terms/index.html", "404.html"];
@@ -17,8 +25,28 @@ describe("public page structure", () => {
     expect(html).toMatch(/<meta property="og:image"/);
     expect(html).toMatch(/<meta name="twitter:card"/);
     expect(html).toMatch(/<link rel="apple-touch-icon"/);
-    expect(html).toContain("v0.1.0 · polish-3");
+    expect(html.split(BUILD_IDENTITY_MARKER)).toHaveLength(2);
+    expect(html).not.toContain("polish-3");
+    const builtHtml = injectBuildIdentity(html);
+    expect(builtHtml).toContain(`data-build-identity>${BUILD_LABEL}</span>`);
+    expect(builtHtml).not.toContain(BUILD_IDENTITY_MARKER);
     expect(html).toContain('id="route-status" aria-live="polite"');
+  });
+
+  it("uses the current package version and a traceable build identifier", () => {
+    const packageJson = JSON.parse(readFileSync(resolve(site, "../package.json"), "utf8")) as { version: string };
+    expect(PACKAGE_VERSION).toBe(packageJson.version);
+    expect(BUILD_LABEL).toBe(`v${packageJson.version} · ${BUILD_ID}`);
+    expect(BUILD_ID).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/);
+    expect(BUILD_ID).not.toBe("polish-3");
+  });
+
+  it("prefers a factory build ID and normalizes full commit hashes", () => {
+    expect(resolveBuildId({ FACTORY_BUILD_ID: "devcontainer-identity-audit-polish-5" })).toBe(
+      "devcontainer-identity-audit-polish-5"
+    );
+    expect(resolveBuildId({ GITHUB_SHA: "1234567890abcdef1234567890abcdef12345678" })).toBe("1234567890ab");
+    expect(() => resolveBuildId({ FACTORY_BUILD_ID: "unsafe build id" })).toThrow(/Build ID/);
   });
 
   it("ships the social, touch, recording, demo, and audit documents", () => {

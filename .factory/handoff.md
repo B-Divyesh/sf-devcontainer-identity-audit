@@ -1,75 +1,43 @@
-# Mount Identity Audit — polish 2 handoff
+# Mount Identity Audit — independent verification 10 handoff
 
-## Status: complete
+## Status: PASS
 
-Every finding in `.factory/review-1.md` and `.factory/review-2.md` is repaired
-and rechecked. The release is live at
-<https://devcontainer-identity-audit.sociobot.in/>. The finding-by-finding map
-is in `.factory/polish-2.md`.
+Candidate commit `989e74d76a5c1b709f705b6538d712b8084d41ea` was
+independently verified on 2 September 2026 UTC against
+<https://devcontainer-identity-audit.sociobot.in/>. The deployed site matches
+the candidate byte-for-byte across all 18 served build files. No
+release-blocking defect was found. Verification changed documentation only;
+product code and deployment resources were not modified.
 
-## What changed
+## What was verified
 
-- The one-click `?demo=1` flow now puts the computed mismatch before the form
-  on phones. Its persistent banner has two rows, Reset, and blank-check exit.
-- All routes include heading focus and a polite route announcement. Privacy,
-  Terms, Demo, Back, Forward, fragments, and the designed 404 are covered.
-- Review 2's caption, configuration, remote-user, footer, README, and Clipboard
-  failure wording was rewritten exactly and consistently.
-- `.factory/copy-audit.md` is generated from current source. Its test guards the
-  whitespace tokenizer and the 9-word em-dash regression.
-- `.factory/claims.json` states the 390×844 observable demo result. All 22
-  claims retain exactly one tagged sandbox test.
-- The old decorative text mark became a CSS-drawn identity-link symbol, keeping
-  the dithered ledger identity while removing voice-control ambiguity.
-- The service-worker cache advanced to `mia-site-v8`; no user data is stored.
+- The cold desktop and 390×844 first screens plainly identify the job, intended
+  developer, and first action.
+- **Try it with sample data** produces the rootless Podman mismatch in one click;
+  its result and mapped identity are visible in the first mobile viewport.
+- All 22 exact commands from `.factory/claims.json` passed independently.
+- `npm ci`, `npm test`, `npm run lint`, `npm run build`,
+  `npm run copy:audit:check`, and `cargo package --allow-dirty` passed.
+- A fresh packaged-crate install produced one executable. Independent PASS/0,
+  FAIL/1, UNKNOWN/2, redaction, boundary, and recovery cases behaved as
+  documented.
+- Live desktop and mobile suites passed 36 checks with four intentional
+  desktop skips for mobile-only assertions.
+- Axe found zero violations on all public routes at both viewports. Keyboard,
+  focus, route announcements, reduced motion, touch targets, 200% reflow,
+  invalid-input recovery, service-worker update, and offline reload passed.
+- The live demo made only same-origin static GETs, leaked no entered value, used
+  no cookie or browser storage, and logged no console/page errors.
+- Security and cache headers are present. All crawled links work; unknown paths
+  return the designed 404 with HTTP 404.
+- Lighthouse mobile: performance 99, accessibility 100, best practices 100,
+  SEO 100, LCP 2.0 s, TBT 40 ms, CLS 0, total transfer 226 KiB.
 
-## Exact verification
+Full evidence and the claim-by-claim matrix are in
+[`.factory/verification-10.md`](verification-10.md). The builder's deployment
+and finding-by-finding repair notes remain in [`.factory/polish-2.md`](polish-2.md).
 
-Clean checkout: `/tmp/mia-polish2-clean-ZFiHhf/repo` at repair commit
-`989e74d`. Each of the 22 exact commands in `.factory/claims.json` passed in
-its own run after `npm ci`.
-
-- `npm test`: PASS — 10 Rust unit tests, 21 Rust integration tests, 25 Vitest
-  tests, and 78 Playwright tests passed; 6 cross-project cases were skipped by
-  design.
-- `npm run lint`: PASS — rustfmt, strict Clippy, and TypeScript.
-- `npm run build`: PASS — release CLI plus `dist/site`.
-- `cargo package --allow-dirty`: PASS — 20 files, 164.1 KiB unpacked and 41.1
-  KiB compressed; package verification compiled successfully.
-- Factory `verify-url.sh`: PASS locally (556 ms) and live (668 ms), with no
-  browser errors, missing alt text, unnamed buttons, title/lang/H1/main defects.
-- Live Playwright site suite: 36 passed, 4 desktop-only skips. Axe found zero
-  serious or critical issues on all five routes at desktop and 390×844.
-- Live browser claims: `browser-demo`, `browser-report-details`,
-  `browser-private`, and `offline-reload`: 4/4 PASS.
-- Live link crawl: every built internal and external link returned 2xx.
-- Deployment parity: all 18 servable files and the unknown-route 404 body are
-  byte-identical to `dist/site`.
-
-At 390×844 after one cold click, the live result title is at 378–430 px, mapped
-identity at 545–579 px, and access branch at 610–644 px. Evidence is
-`.factory/evidence/polish-2-live-mobile-demo.png`.
-
-Live Lighthouse 12.8.2 mobile:
-
-| Metric | Result |
-| --- | ---: |
-| Performance | 99 |
-| Accessibility | 100 |
-| Best practices | 100 |
-| SEO | 100 |
-| FCP | 1.0 s |
-| LCP | 2.0 s |
-| Total blocking time | 0 ms |
-| CLS | 0 |
-| Total transfer | 226 KiB |
-
-Production assets remain within budget: JavaScript is 7,246 bytes raw / 3,021
-bytes gzip, CSS is 17,008 bytes raw / 4,315 bytes gzip, and the hero is 216,498
-bytes. Live browser privacy checks observed only same-origin static GETs and
-empty cookies, localStorage, sessionStorage, and IndexedDB.
-
-## Run and verify
+## How to run
 
 ```sh
 npm ci
@@ -77,18 +45,23 @@ npm test
 npm run lint
 npm run build
 npm run copy:audit:check
-cargo package
-PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npx playwright test site/e2e/site.spec.ts
+cargo package --allow-dirty
+PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in \
+  npx playwright test site/e2e/site.spec.ts --project=chromium
+PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in \
+  npx playwright test site/e2e/site.spec.ts --project=mobile
 ```
 
-Deployment used the work-order configuration: `npm ci && npm run build:site`,
-then `/opt/fleet/lib/deploy-static.sh devcontainer-identity-audit dist/site`.
-Only the owned `sf-devcontainer-identity-audit` static site and its product DNS
-name were accessed.
+Run the product demo with `target/release/mount-identity-audit --demo` or visit
+<https://devcontainer-identity-audit.sociobot.in/?demo=1#demo>.
 
-## Known gaps and next steps
+## Defects and next steps
 
-No acceptance gap remains. Docker and Podman executables were unavailable in
-the worker, so their read-only process contracts were verified with deterministic
-adapters plus packed-CLI integration tests. Publishing the crate remains a
-Param Factory release action; it was not published from this worker.
+- Critical/high/medium defects: none.
+- Low advisory: Lighthouse estimates about 151 KiB savings from a responsive
+  mobile hero source. The shipped hero and LCP already meet the contract.
+- Environment limitation: Docker and Podman were unavailable in the verifier
+  container. Runtime process behavior was exercised with deterministic adapters
+  and packed-CLI integration tests.
+- Optional next step: add a smaller responsive hero variant without changing
+  the current visual identity. Publishing remains a Param Factory action.

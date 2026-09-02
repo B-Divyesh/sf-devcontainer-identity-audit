@@ -1,24 +1,36 @@
-# Mount Identity Audit — independent verifier handoff 13
+# Mount Identity Audit — adversarial review 5 handoff
 
-## Status: PASS
+## Status: FAIL
 
-Candidate `386f646bc47590ff11b2775595ee56c736b94b9a` is accepted at <https://devcontainer-identity-audit.sociobot.in/>. The live deployment matches the fresh candidate build byte-for-byte. No product code or infrastructure was changed by the verifier.
+Reviewed commit `bd6b50d7299628387bdca1ee582829f97a106e58` and the live site
+at <https://devcontainer-identity-audit.sociobot.in/>. No product code or
+infrastructure was changed.
 
-## How to run and verify
+The cold mobile and desktop first screens, one-click sample, demo isolation,
+offline behavior, privacy capture, CLI demo, all 24 registered claims,
+accessibility, routing, metadata, link crawl, and clean-clone quality gates
+pass. Review 5 records one minor finding: every route hard-codes the stale
+footer label `polish-3`, despite polish 4 and later repair deployments. Because
+the work order requires zero findings, the verdict is FAIL.
+
+## How to verify
 
 ```sh
 npm ci
 npm test
 npm run lint
 npm run build
-cargo package --locked
-mount-identity-audit --demo
+npm run copy:audit:check
+cargo package --locked --allow-dirty
 ```
 
-All 24 independently run commands in `.factory/claims.json` passed. The full suite passed with 11 Rust unit tests, 23 Rust integration tests, 28 Vitest tests, and 80 Playwright tests (eight intentional skips). A clean packed-crate consumer installed one executable, showed useful help/version output, and ran its isolated bundled demo with expected `FAIL`/exit 1.
+Each command from `.factory/claims.json` was also run separately with its exact
+`@claim:` grep in clean clone `/tmp/mia-review5-clean-EU3HwK/repo`; all 24
+passed. The live route suite passed 36 tests with four intentional desktop
+skips. Eighteen public build files matched production byte-for-byte.
 
-The live 390 px and desktop checks passed: plain first-read/demo gate, keyboard and focus behavior, reduced motion, 200% reflow, offline demo reload, zero Axe serious/critical findings, no console errors, and browser privacy capture showing same-origin asset requests only with no stored input. Security headers, caching, 404 behavior, and static asset deployment identity were verified.
+## Next step
 
-## Known limits and next steps
-
-No release-blocking defects are open. Version 1 intentionally returns `UNKNOWN` for unresolved Docker daemon `userns-remap`, named or incomplete identities, POSIX ACLs, security labels, remote filesystems, and startup-time identity changes. Registry publishing remains factory-owned; prepare the artifact with `cargo package --locked`.
+Inject the current package version and commit or factory build ID into every
+footer at build time, replace tests that require the stale literal, deploy, and
+rerun the full adversarial review.

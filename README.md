@@ -37,7 +37,8 @@ with exit code `1`, the same as a project with a confirmed mismatch.
 The browser sample also accepts the host caller identity and the allocated
 `/etc/subuid` and `/etc/subgid` range starts. Podman `keep-id` preserves the host
 caller’s ID. Other remote users map through the subordinate ID ranges. The CLI
-reads the live runtime map instead.
+composes Podman’s inner `keep-id` map with both live outer maps before checking
+access.
 
 ## Usage
 

@@ -2,6 +2,10 @@
 
 ## Unreleased — 2026-09-02
 
+- Compose Podman `keep-id`'s inner namespace with the live rootless UID/GID
+  maps, including container IDs below, equal to, and above the kept user.
+- Align the browser calculator with Podman's two-layer `keep-id` mapping and
+  verify parity against an installed packed CLI using identical ranges.
 - Correct the documented maximum to four read-only runtime calls for an
   image-only rootless Podman audit, with an exact call-recording regression.
 - Return `UNKNOWN` when Docker reports daemon `userns-remap` instead of

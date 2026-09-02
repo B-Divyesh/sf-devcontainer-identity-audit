@@ -68,8 +68,18 @@ export function evaluateAudit(input: AuditInput): DemoAuditResult {
       mappedGid = mappedId(remoteGid === 0 ? hostGid : subgidStart + remoteGid - 1, "Mapped GID");
       mapping = "rootless subuid map";
     } else {
-      mappedUid = mappedId(remoteUid === hostUid ? hostUid : subuidStart + remoteUid, "Mapped UID");
-      mappedGid = mappedId(remoteGid === hostGid ? hostGid : subgidStart + remoteGid, "Mapped GID");
+      mappedUid = mappedId(
+        remoteUid === hostUid
+          ? hostUid
+          : subuidStart + remoteUid - (remoteUid > hostUid ? 1 : 0),
+        "Mapped UID"
+      );
+      mappedGid = mappedId(
+        remoteGid === hostGid
+          ? hostGid
+          : subgidStart + remoteGid - (remoteGid > hostGid ? 1 : 0),
+        "Mapped GID"
+      );
       mapping = "keep-id mapping";
     }
   }

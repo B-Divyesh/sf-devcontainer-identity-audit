@@ -13,7 +13,7 @@
 - Storage namespace: none. State exists only in the page DOM. Demo mode never reads or writes real browser storage.
 - Offline: visit once, wait for the service worker, then reload `/demo/` offline.
 - Safe example: **Load safe example** replaces every field and selects `keep-id`; it does not preserve invalid edits.
-- Mapping check: with owner and caller `1000:1000`, remote user `2000:2000`, and `keep-id`, the browser and packed CLI both map to `102000:102000` and return `FAIL`.
+- Mapping check: with owner and caller `1000:1000`, subordinate ranges at `100000`, and `keep-id`, browser and packed CLI cover root, `999`, `1000`, and `2000`. They map to `100000`, `100999`, `1000`, and `101999` respectively.
 
 ## CLI sample
 

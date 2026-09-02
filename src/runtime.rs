@@ -173,30 +173,59 @@ pub fn map_identity(
     if userns.is_some_and(|value| value == "host") {
         return Ok((uid, gid));
     }
+    if !info.inspected {
+        return Err(
+            "rootless Podman mapping requires runtime inspection unless --userns=host".into(),
+        );
+    }
+    let executable = override_bin.unwrap_or(&info.executable);
+    let uid_map = read_map(executable, "/proc/self/uid_map")?;
+    let gid_map = read_map(executable, "/proc/self/gid_map")?;
     if userns.is_some_and(|value| value.starts_with("keep-id")) {
         let host_uid = id_value("-u")?;
         let host_gid = id_value("-g")?;
+        reject_reserved(host_uid, "host caller UID")?;
+        reject_reserved(host_gid, "host caller GID")?;
         let configured_uid = userns
             .and_then(|value| option_number(value, "uid"))
             .unwrap_or(host_uid);
         let configured_gid = userns
             .and_then(|value| option_number(value, "gid"))
             .unwrap_or(host_gid);
-        if uid == configured_uid && gid == configured_gid {
-            reject_reserved(host_uid, "mapped host UID")?;
-            reject_reserved(host_gid, "mapped host GID")?;
-            return Ok((host_uid, host_gid));
+        reject_reserved(configured_uid, "keep-id container UID")?;
+        reject_reserved(configured_gid, "keep-id container GID")?;
+
+        let mapped_caller_uid = map_id(0, &uid_map)?;
+        let mapped_caller_gid = map_id(0, &gid_map)?;
+        if mapped_caller_uid != host_uid || mapped_caller_gid != host_gid {
+            return Err(format!(
+                "live rootless Podman map starts at {mapped_caller_uid}:{mapped_caller_gid}, not caller {host_uid}:{host_gid}"
+            ));
         }
+
+        let intermediate_uid = keep_id_inner_id(uid, configured_uid)?;
+        let intermediate_gid = keep_id_inner_id(gid, configured_gid)?;
+        return Ok((
+            map_id(intermediate_uid, &uid_map)?,
+            map_id(intermediate_gid, &gid_map)?,
+        ));
     }
-    if !info.inspected {
-        return Err(
-            "rootless Podman mapping requires runtime inspection or --userns=host/keep-id".into(),
-        );
-    }
-    let executable = override_bin.unwrap_or(&info.executable);
-    let uid_map = read_map(executable, "/proc/self/uid_map")?;
-    let gid_map = read_map(executable, "/proc/self/gid_map")?;
     Ok((map_id(uid, &uid_map)?, map_id(gid, &gid_map)?))
+}
+
+/// Translate a container ID through Podman's `keep-id` namespace into the
+/// parent/rootless namespace. The kept ID maps to parent ID 0, IDs below it
+/// shift up by one, and IDs above it retain their number.
+fn keep_id_inner_id(id: u32, kept_id: u32) -> Result<u32, String> {
+    if id == kept_id {
+        return Ok(0);
+    }
+    if id < kept_id {
+        return id
+            .checked_add(1)
+            .ok_or_else(|| format!("container ID {id} overflows the keep-id map"));
+    }
+    Ok(id)
 }
 
 fn read_map(executable: &Path, path: &str) -> Result<Vec<(u32, u32, u32)>, String> {
@@ -339,6 +368,30 @@ mod tests {
         assert_eq!(map_id(1000, &rows).unwrap(), 100999);
         assert!(map_id(70000, &rows).is_err());
         assert!(map_id(u32::MAX, &[(u32::MAX, u32::MAX, 1)]).is_err());
+    }
+
+    #[test]
+    fn composes_keep_id_below_equal_and_above_the_kept_user() {
+        let outer = [(0, 1000, 1), (1, 100000, 65536)];
+        let cases = [
+            (0, 100000),
+            (999, 100999),
+            (1000, 1000),
+            (1001, 101000),
+            (2000, 101999),
+        ];
+
+        for (container_id, host_id) in cases {
+            let intermediate = keep_id_inner_id(container_id, 1000).unwrap();
+            assert_eq!(map_id(intermediate, &outer).unwrap(), host_id);
+        }
+    }
+
+    #[test]
+    fn composes_keep_id_with_a_configured_container_user() {
+        assert_eq!(keep_id_inner_id(1199, 1200).unwrap(), 1200);
+        assert_eq!(keep_id_inner_id(1200, 1200).unwrap(), 0);
+        assert_eq!(keep_id_inner_id(1201, 1200).unwrap(), 1201);
     }
 
     #[test]

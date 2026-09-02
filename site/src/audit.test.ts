@@ -32,16 +32,21 @@ describe("browser audit model", () => {
     expect(evaluateAudit({ ...base, runtime: "podman", userns: "keep-id" }).verdict).toBe("pass");
   });
 
-  it("maps a non-kept identity through the keep-id subordinate range", () => {
+  it.each([
+    ["0", "100000:100000", "fail"],
+    ["999", "100999:100999", "fail"],
+    ["1000", "1000:1000", "pass"],
+    ["2000", "101999:101999", "fail"]
+  ] as const)("composes keep-id for remote ID %s", (remoteId, mappedIdentity, verdict) => {
     const result = evaluateAudit({
       ...base,
-      remoteUid: "2000",
-      remoteGid: "2000",
+      remoteUid: remoteId,
+      remoteGid: remoteId,
       runtime: "podman",
       userns: "keep-id"
     });
-    expect(result.verdict).toBe("fail");
-    expect(result.mappedIdentity).toBe("102000:102000 · keep-id mapping");
+    expect(result.verdict).toBe(verdict);
+    expect(result.mappedIdentity).toBe(`${mappedIdentity} · keep-id mapping`);
   });
 
   it("does not confuse the workspace owner with the host caller", () => {
@@ -57,7 +62,7 @@ describe("browser audit model", () => {
       userns: "keep-id"
     });
     expect(result.verdict).toBe("fail");
-    expect(result.mappedIdentity).toBe("102000:102100 · keep-id mapping");
+    expect(result.mappedIdentity).toBe("101999:102099 · keep-id mapping");
   });
 
   it("fails an explicitly read-only mount", () => {

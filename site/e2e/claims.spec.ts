@@ -514,41 +514,77 @@ test("browser model matches the packed CLI for keep-id mappings @claim:browser-p
   await expect(page.locator("#mapped-id")).toContainText("100999:100999");
   await expect(page.locator("#status-stamp")).toHaveText("fail");
 
-  await page.getByLabel("Remote UID").fill("2000");
-  await page.getByLabel("Remote GID").fill("2000");
   await page.getByLabel("Podman user namespace").selectOption("keep-id");
-  await page.getByRole("button", { name: "Check mount permissions" }).click();
-  await expect(page.locator("#mapped-id")).toHaveText("102000:102000 · keep-id mapping");
-  await expect(page.locator("#status-stamp")).toHaveText("fail");
+  const cases = [
+    { remoteId: 0, hostId: 100000, verdict: "fail" },
+    { remoteId: 999, hostId: 100999, verdict: "fail" },
+    { remoteId: 1000, hostId: 1000, verdict: "pass" },
+    { remoteId: 2000, hostId: 101999, verdict: "fail" }
+  ] as const;
 
   const packed = packedCliPath();
-  const root = project('{ remoteUser: "2000:2000", runArgs: ["--userns", "keep-id"] }');
-  const runtime = join(root, "podman-keep-id-map");
+  const support = mkdtempSync(join(tmpdir(), "mia-keep-id-support-"));
+  const runtime = join(support, "podman-keep-id-map");
+  const callLog = join(support, "runtime-calls.log");
+  const fakeId = join(support, "id");
   writeFileSync(runtime, `#!/bin/sh
+printf '%s\\n' "$*" >> "$AUDIT_CALL_LOG"
 case "$1" in
   info) printf '%s\\n' '{"version":{"Version":"5.2.2"},"host":{"security":{"rootless":true}}}' ;;
-  unshare) printf '%s\\n' '0 1000 1' '1 100001 65536' ;;
+  unshare) printf '%s\\n' '0 1000 1' '1 100000 65536' ;;
+  *) exit 9 ;;
+esac
+`);
+  writeFileSync(fakeId, `#!/bin/sh
+case "$1" in
+  -u|-g) printf '%s\\n' '1000' ;;
   *) exit 9 ;;
 esac
 `);
   chmodSync(runtime, 0o755);
-  if (process.getuid?.() === 0) chownSync(root, 1000, 1000);
+  chmodSync(fakeId, 0o755);
+  const roots: string[] = [];
   try {
-    const output = spawnSync(
-      packed.path,
-      [root, "--runtime", "podman", "--runtime-bin", runtime, "--json"],
-      { encoding: "utf8" }
-    );
-    const report = JSON.parse(output.stdout);
-    expect(output.status).toBe(1);
-    expect(report.verdict).toBe("fail");
-    expect(`${report.identity.host_uid}:${report.identity.host_gid}`).toBe("102000:102000");
-    if (process.getuid?.() === 0) {
+    for (const item of cases) {
+      const root = project(`{ remoteUser: "${item.remoteId}:${item.remoteId}", runArgs: ["--userns", "keep-id"] }`);
+      roots.push(root);
+      if (process.getuid?.() === 0) chownSync(root, 1000, 1000);
+      const output = spawnSync(
+        packed.path,
+        [root, "--runtime", "podman", "--runtime-bin", runtime, "--json"],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            AUDIT_CALL_LOG: callLog,
+            PATH: `${support}:${process.env.PATH ?? ""}`
+          }
+        }
+      );
+      const report = JSON.parse(output.stdout);
+      expect(output.status).toBe(item.verdict === "pass" ? 0 : 1);
+      expect(report.verdict).toBe(item.verdict);
+      expect(`${report.identity.host_uid}:${report.identity.host_gid}`).toBe(`${item.hostId}:${item.hostId}`);
       expect(`${report.workspace.owner_uid}:${report.workspace.owner_gid}`).toBe("1000:1000");
     }
+    const calls = readFileSync(callLog, "utf8").trim().split("\n");
+    expect(calls).toEqual(cases.flatMap(() => [
+      "info --format json",
+      "unshare cat /proc/self/uid_map",
+      "unshare cat /proc/self/gid_map"
+    ]));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+    rmSync(support, { recursive: true, force: true });
     rmSync(packed.sandbox, { recursive: true, force: true });
+  }
+
+  for (const item of cases) {
+    await page.getByLabel("Remote UID").fill(String(item.remoteId));
+    await page.getByLabel("Remote GID").fill(String(item.remoteId));
+    await page.getByRole("button", { name: "Check mount permissions" }).click();
+    await expect(page.locator("#mapped-id")).toHaveText(`${item.hostId}:${item.hostId} · keep-id mapping`);
+    await expect(page.locator("#status-stamp")).toHaveText(item.verdict);
   }
 
   await page.getByRole("button", { name: "Load safe example" }).click();

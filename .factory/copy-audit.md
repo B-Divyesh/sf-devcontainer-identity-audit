@@ -84,7 +84,7 @@ counts, sentences over 22 words, or banned terms.
 | 17 | The browser sample also accepts the host caller identity and the allocated /etc/subuid and /etc/subgid range starts. |
 | 7 | Podman keep-id preserves the host caller’s ID. |
 | 9 | Other remote users map through the subordinate ID ranges. |
-| 8 | The CLI reads the live runtime map instead. |
+| 15 | The CLI composes Podman’s inner keep-id map with both live outer maps before checking access. |
 | 5 | Run it from a repository. |
 | 7 | The CLI discovers .devcontainer/devcontainer.json, .devcontainer.json, or devcontainer.json. |
 | 10 | It follows Compose metadata when the configuration names a service. |

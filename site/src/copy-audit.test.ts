@@ -26,4 +26,21 @@ describe("generated copy audit", () => {
     expect(audit).toContain("| 7 | Compose services.<name>.user, image, build, volumes, and read_only; |");
     expect(audit).toContain("| 7 | Every public promise is listed in .factory/claims.json. |");
   });
+
+  it("lists each sentence from multi-sentence browser messages separately", () => {
+    const audit = readFileSync(resolve(repo, ".factory/copy-audit.md"), "utf8");
+    for (const row of [
+      "| 5 | The demo could not complete. |",
+      "| 4 | Reload and try again. |",
+      "| 2 | Couldn’t copy. |",
+      "| 7 | Select the command and copy it manually. |",
+      "| 5 | No ownership change is indicated. |",
+      "| 9 | Confirm with the CLI against the real runtime map. |"
+    ]) {
+      expect(audit).toContain(row);
+    }
+    expect(audit).not.toContain("| 9 | The demo could not complete. Reload and try again. |");
+    expect(audit).not.toContain("| 9 | Couldn’t copy. Select the command and copy it manually. |");
+    expect(audit).not.toContain("| 14 | No ownership change is indicated. Confirm with the CLI against the real runtime map. |");
+  });
 });

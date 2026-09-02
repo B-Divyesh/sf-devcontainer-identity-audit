@@ -81,8 +81,12 @@ function htmlSentences() {
   for (const path of ["site/src/main.ts", "site/src/audit.ts"]) {
     const source = readFileSync(resolve(root, path), "utf8");
     for (const match of source.matchAll(/"([^"\n]*(?:[.!?]))"/gu)) {
-      const sentence = cleanInline(match[1]);
-      if (sentence && !sentence.startsWith("#") && !sentence.includes("${")) prose.push(sentence);
+      // Source messages often contain two short sentences. Audit each reader-
+      // visible sentence independently so a later edit cannot hide an overlong
+      // follow-up sentence in a combined row.
+      for (const sentence of splitSentences(match[1])) {
+        if (sentence && !sentence.startsWith("#") && !sentence.includes("${")) prose.push(sentence);
+      }
     }
   }
   return [...new Set(prose)];

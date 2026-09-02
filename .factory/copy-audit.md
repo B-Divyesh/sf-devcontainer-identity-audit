@@ -47,12 +47,15 @@ counts, sentences over 22 words, or banned terms.
 | 5 | Free under the MIT License. |
 | 9 | The browser sample works offline after the first visit. |
 | 7 | The browser sample sends no project data. |
-| 9 | The demo could not complete. Reload and try again. |
+| 5 | The demo could not complete. |
+| 4 | Reload and try again. |
 | 3 | Install command copied. |
-| 9 | Couldn’t copy. Select the command and copy it manually. |
+| 2 | Couldn’t copy. |
+| 7 | Select the command and copy it manually. |
 | 12 | Directory mode must be three or four octal digits, such as 0755. |
 | 11 | The mapped remote user can read, write, and traverse this workspace. |
-| 14 | No ownership change is indicated. Confirm with the CLI against the real runtime map. |
+| 5 | No ownership change is indicated. |
+| 9 | Confirm with the CLI against the real runtime map. |
 | 9 | The mount is explicitly read-only, regardless of matching ownership. |
 | 11 | Remove the read-only mount flag only if workspace edits are intended. |
 | 11 | The mapped remote user cannot read and traverse the workspace directory. |

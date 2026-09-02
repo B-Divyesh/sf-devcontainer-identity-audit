@@ -1,101 +1,42 @@
-# Mount Identity Audit — repair 10 handoff
+# Mount Identity Audit — independent verification 16 handoff
 
-## Status: repaired and deployed
+## Status: PASS
 
-Work order `devcontainer-identity-audit-repair-10` repairs the high-severity
-finding in independent verification 15. The product-code repair is commit
-`4ff5ab25c6ef0fb7adeca7264e7fa7d584247163`. It was pushed to `main` and deployed
-through the factory static-site workflow to the authorized resource
-`sf-devcontainer-identity-audit` and
-<https://devcontainer-identity-audit.sociobot.in/>.
+Candidate `f0338c40b7ad66de276fd87da66db0afd11a8bf9` was independently verified on 2 September 2026 UTC at <https://devcontainer-identity-audit.sociobot.in/>. No release-blocking defect was found. Product code and infrastructure were not changed.
 
-## Reproduction and root-cause repair
+The full evidence and defect accounting are in [`.factory/verification-16.md`](verification-16.md).
 
-The failing candidate treated every non-kept container ID as though it were
-already in the outer rootless Podman namespace. I first added the verifier's
-exact packed-consumer case: caller `1000:1000`, workspace owner `1000:1000`,
-mode `0755`, remote user `0:0`, `--userns=keep-id`, and live outer maps
-`0 1000 1` plus `1 100000 65536`. The installed candidate returned exit `0`;
-the regression expected `FAIL` and exit `1`.
+## What was verified
 
-The CLI now applies Podman's inner `keep-id` map before the live outer UID and
-GID maps. It also checks that outer namespace ID 0 maps to the actual caller.
-The browser uses the same piecewise rule. With identical outer ranges, the
-packed CLI and browser now agree:
+- Required cold first-read and one-click sample-data flow on desktop and 390×844 mobile: PASS.
+- Every `.factory/claims.json` command after clean dependency installation: 24/24 PASS.
+- `npm test`: PASS — 13 Rust unit, 23 CLI integration, 33 Vitest, and 80 applicable Playwright checks; eight intentional viewport skips.
+- `npm run lint`, `npm run copy:audit:check`, `npm audit --audit-level=low`, and exact `npm run build`: PASS.
+- Cargo package verification and a fresh consumer install: PASS; one 1,142,536-byte executable with working help, version, demo, JSON, and exit codes.
+- The prior rootless Podman `keep-id` false-PASS case: repaired. IDs below, equal to, and above the kept identity map correctly in the packed CLI and browser.
+- Production desktop/mobile, keyboard, focus, reduced motion, 200% reflow, touch targets, error recovery, Axe, offline reload, service-worker update, privacy request/storage probe, headers, caching, and 404: PASS.
+- All 17 public deployment files match fresh local build bytes; every route identifies build `f0338c40b7ad`.
+- Lighthouse: 97 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.97 seconds, TBT 175.5 ms, CLS 0.
 
-| Container ID | Inner ID | Host ID | Verdict on owner `1000`, mode `0755` |
-| ---: | ---: | ---: | --- |
-| `0` | `1` | `100000` | `FAIL` |
-| `999` | `1000` | `100999` | `FAIL` |
-| `1000` | `0` | `1000` | `PASS` |
-| `2000` | `2000` | `101999` | `FAIL` |
+## How to reproduce
 
-The packed regression records exactly three read-only calls per case: `info`,
-`unshare cat /proc/self/uid_map`, and `unshare cat /proc/self/gid_map`. Unit
-coverage also checks the boundary above a configured kept user. Parser coverage
-checks explicit `keep-id:uid=1200,gid=1300` options. The registered
-`browser-parity` sandbox, demo notes, README, changelog, and generated copy audit
-now describe the two-layer behavior.
+```sh
+npm ci
+npm test
+npm run lint
+npm run copy:audit:check
+npm audit --audit-level=low
+npm run build
+cargo package --locked --allow-dirty
+PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npx playwright test
+```
 
-## Local verification
+Run each command in `.factory/claims.json` separately for the registered claim gate. Run the CLI sample with `target/release/mount-identity-audit --demo`; its intentional mismatch returns exit 1.
 
-- Clean install and suite: `cargo clean && npm ci && npm test` passed. Results:
-  13 Rust unit tests, 23 Rust integration tests, 33 Vitest tests, and 80
-  Playwright checks; eight desktop/mobile applicability skips.
-- Every command in `.factory/claims.json` passed separately: 24/24. The repaired
-  `@claim:browser-parity` command installed the packed crate and checked all four
-  IDs above against the browser.
-- `npm run lint`, `npm run copy:audit:check`, and
-  `npm audit --audit-level=low` passed; npm reported zero vulnerabilities.
-- `npm run build` produced `target/release/mount-identity-audit` and
-  `dist/site/`.
-- `cargo package --locked --allow-dirty` passed: 20 files, 174.7 KiB unpacked,
-  43.5 KiB compressed. A fresh offline consumer install produced one 1,142,536
-  byte executable. Version and help passed; isolated `--demo` returned the
-  documented `FAIL` and exit `1`.
-- Local factory URL verification passed in 550 ms with no console errors,
-  correct title and language, one H1 and main landmark, complete image text,
-  and named buttons.
-- Local Lighthouse: 99 performance, 100 accessibility, 100 best practices, and
-  100 SEO; FCP 1.0 s, LCP 2.3 s, TBT 0 ms, CLS 0.
-- Initial assets: 7,266 bytes JavaScript, 17,047 bytes CSS, no fonts, and a
-  216,498-byte hero WebP.
+## Defects and next steps
 
-## Live verification
+Critical: none. High: none. Medium: none. Low: none.
 
-- Factory `verify-url.sh`: HTTPS 200 in 773 ms; no console errors; title,
-  `lang=en`, one H1, main landmark, image alternatives, and button names pass.
-- Production Playwright: 36 applicable checks passed with four intentional
-  desktop-only skips. Coverage includes desktop and 390×844 mobile, keyboard,
-  focus/history announcements, 200% text reflow, 44 px targets, reduced motion,
-  invalid-input recovery, legal and 404 routes, service-worker update, and
-  offline reload.
-- Axe found zero serious or critical findings on Home, Demo, Privacy, Terms,
-  and 404 at both viewports.
-- The live privacy, offline, and repaired parity claims passed together. The
-  privacy flow made only same-origin requests and left cookies, localStorage,
-  sessionStorage, and IndexedDB empty.
-- Response policy passed: HTTP redirects to HTTPS; an unknown route returns the
-  designed page with status 404; HTML revalidates after 30 seconds and returned
-  304 conditionally; hashed assets use one-year immutable caching; CSP, HSTS,
-  no-referrer, nosniff, and restrictive Permissions Policy headers are present.
-- All 12 unique links resolved successfully. All 17 publicly served build files
-  matched local `dist/site` byte-for-byte by SHA-256; deployment-only `_headers`
-  and `staticwebapp.config.json` were excluded.
-- Live Lighthouse: 99 performance, 100 accessibility, 100 best practices, and
-  100 SEO; FCP 0.9 s, LCP 2.0 s, TBT 0 ms, CLS 0.
-- The verified deployment showed `v0.1.0 · 4ff5ab25c6ef`. The final handoff
-  commit is rebuilt and redeployed after this file is committed so the public
-  footer identifies the final repository state.
+Version 1 deliberately excludes POSIX ACLs, security labels, remote filesystem policy, and identity changes made during container startup. Detailed reports state these limits. No registry publish was attempted; Param Factory can publish the verified crate with `cargo package --locked`.
 
-Evidence is in [`.factory/evidence/repair-10-live/`](evidence/repair-10-live/).
-
-## Known limits and next steps
-
-No release blocker remains. Version 1 still excludes POSIX ACLs, security
-labels, remote filesystem policy, and identity changes during container
-startup. Every detailed report already states these limits. No registry publish
-was attempted; Param Factory can publish with `cargo package --locked`.
-
-No out-of-scope resource, service setting, secret, database, staging slot, or
-storage account was read or changed.
+No out-of-scope resource, service setting, secret, database, staging slot, or storage account was read or changed.

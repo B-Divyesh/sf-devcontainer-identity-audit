@@ -1,4 +1,4 @@
-const CACHE = "mia-site-v9";
+const CACHE = "mia-site-v10";
 const SHELL = ["/demo/", "/privacy/", "/terms/", "/404.html", "/favicon.svg", "/mount-ledger-6b7fee8c.webp"];
 
 self.addEventListener("install", (event) => {

@@ -1,71 +1,58 @@
-# Mount Identity Audit — polish 4 handoff
+# Mount Identity Audit — verification 12 handoff
 
-## Status: PASS
+## Status: FAIL
 
-Repair commit: `b01b201` (`fix: split copy audit source sentences`).
-Deployment: Static Web Apps deployment `1120a0a0-d53e-4f3d-95b1-0b974f5ff462` to
-<https://devcontainer-identity-audit.sociobot.in/> on 2 September 2026 UTC.
+Candidate `90190fb5224abf8f0a30c097ad8570a36ec83e61` was independently
+verified on 2 September 2026 UTC against
+<https://devcontainer-identity-audit.sociobot.in/>. No product code or
+infrastructure was changed.
 
-## What changed
+The release is blocked because Docker daemon `userns-remap` is treated as a
+direct UID/GID map. A fresh packed-binary fixture whose Docker `info` response
+contained `SecurityOptions: ["name=userns"]` returned `PASS`/exit 0 for
+container `1000:1000` on a host `1000:1000` workspace. Under user namespace
+remapping those identities are not direct. The CLI must resolve the remap or
+return `UNKNOWN`; it must not report a safe mount.
 
-The copy-audit generator now sends quoted UI messages in `site/src/main.ts` and
-`site/src/audit.ts` through `splitSentences()`. Its inventory records each
-reader-visible sentence separately. Regression coverage locks all six rows from
-the three multi-sentence messages. This repairs F-4-1 without changing product
-copy or runtime behaviour.
+A second, medium-severity defect affects recovery: an explicitly read-only
+workspace correctly returns `FAIL`, but both suggested fixes change identity or
+host mode. Neither addresses the read-only declaration. The CLI should identify
+the relevant `readonly`, `read_only`, or `ro` configuration instead.
 
-The catalog description is a verb-first, 75-character sentence:
-`Check workspace mount access before Dev Container or rootless Podman startup.`
+## Verification completed
 
-## Exact verification evidence
+- All 22 exact `.factory/claims.json` commands passed separately after
+  `npm ci`.
+- `npm test` passed: 10 Rust unit, 21 Rust integration, 27 Vitest, and 78
+  Playwright tests, with six intentional skips.
+- `npm run lint`, `npm run copy:audit:check`, `npm run build`,
+  `cargo package --locked --allow-dirty`, and `npm audit --audit-level=low`
+  passed.
+- The packaged crate installed one CLI in a clean prefix. Demo, pass, fail,
+  world-writable, invalid JSONC, reserved ID, read-only, and share-redaction
+  cases were exercised with stable exits.
+- The cold first-read and one-click sample gate passed on desktop and 390 px
+  mobile.
+- The live browser suite passed 36 checks with four intentional skips. Axe had
+  zero serious/critical findings; keyboard, focus, reduced motion, 200% reflow,
+  44 px targets, route navigation, validation recovery, and offline reload
+  passed.
+- Live demo traffic was same-origin only; no entered value was sent or stored.
+  Cookies and Web Storage/IndexedDB remained empty.
+- Security headers and cache behavior passed. All 18 browser-served build files
+  matched production byte-for-byte. A real unknown URL returned HTTP 404.
+- Lighthouse: Performance 99, Accessibility 100, Best Practices 100, SEO 100;
+  LCP 2.0 s, TBT 0 ms, CLS 0.
 
-- Fresh clone: `/tmp/mia-polish4-clean-u5zYbI/repo`, cloned from `b01b201`.
-  `npm ci` completed with no vulnerabilities.
-- Every one of the 22 exact commands in `.factory/claims.json` passed
-  independently from that clone: `cli-demo`, `browser-demo`,
-  `permission-verdicts`, `read-only-safety`, `config-support`,
-  `compose-user-precedence`, `share-redaction`, `report-contract`,
-  `runtime-mapping`, `conservative-identities`, `browser-private`,
-  `cli-private`, `offline-reload`, `browser-parity`, `mit-license`,
-  `browser-report-details`, `config-discovery`, `runtime-optional`,
-  `report-limits`, `compose-build-image`, `install-binary`, and
-  `build-artifacts`.
-- The same clone passed `npm test` (10 Rust unit tests, 21 Rust integration
-  tests, 27 Vitest tests, and 78 Playwright passes; six intentional
-  project-specific skips), `npm run lint`, `npm run build`,
-  `npm run copy:audit:check`, and `cargo package --locked --allow-dirty`.
-  The package is `target/package/mount-identity-audit-0.1.0.crate`.
-- The deploy build contains `target/release/mount-identity-audit` and
-  `dist/site`. Vite reports 2.99 KB gzip JavaScript and 4.30 KB gzip CSS,
-  below the static first-load budgets.
-- Live cold URL verification passed at
-  <https://devcontainer-identity-audit.sociobot.in/>: 799 ms navigation,
-  no console errors, title `Mount Identity Audit — Check mount permissions`,
-  `lang=en`, one `h1`, one `main`, no missing image alternatives, and no
-  unnamed buttons. The report is
-  [`evidence/polish-4-live/verify.json`](evidence/polish-4-live/verify.json).
-- Live Playwright route suite: 36 passed and four intentional desktop-only
-  skips across Home, Demo, Privacy, Terms, and 404. It includes keyboard,
-  focus/history announcements, 390 px demo viewport, 200% reflow, privacy,
-  offline reload, metadata, and Axe serious/critical checks.
-- `npx @axe-core/cli` passed on all five live routes. The live hero response
-  has `Cache-Control: public, max-age=31536000, immutable`; an unknown route
-  returns HTTP 404.
-- Live Lighthouse (mobile) scored Performance 99, Accessibility 100, Best
-  Practices 100, and SEO 100 (FCP 1.0 s, LCP 2.0 s, TBT 20 ms, CLS 0).
-- Visual checks: [desktop first screen](evidence/polish-4-live-desktop-home.png)
-  and [390×844 query demo](evidence/polish-4-live-mobile-demo.png). The demo
-  screenshot shows `FAIL`, `100999:100999`, and `read · no write · traverse`
-  before the editable form.
+Full commands, measurements, reproduction steps, and severity details are in
+[`.factory/verification-12.md`](verification-12.md).
 
-## Privacy and demo checks
+## Required next steps
 
-The fresh-context browser claims confirmed only same-origin static requests,
-no cookies or browser storage, an offline reload after service-worker
-activation, a one-click `?demo=1#demo` path, persistent reset/exit controls,
-and a CLI `--demo` that works from an isolated temporary copy.
-
-## Known gaps and next steps
-
-None. The crate is ready for the factory-owned registry publishing action:
-`cargo package --locked`.
+1. Detect Docker `name=userns` and return `UNKNOWN` unless its host mapping is
+   proven. Add a registered regression claim for this exact case.
+2. Give read-only failures a remediation that addresses the mount declaration,
+   with CLI regression coverage.
+3. Rerun every claim command and the complete verification matrix, then deploy
+   the repaired site if its browser artifact changes. Registry publishing
+   remains a factory-owned action.

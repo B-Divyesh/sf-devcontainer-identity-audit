@@ -8,7 +8,7 @@ It is for developers and CI maintainers who want a numeric ownership report
 before startup.
 
 Live documentation and one-click sample:
-[devcontainer-identity-audit.sociobot.in/demo/](https://devcontainer-identity-audit.sociobot.in/demo/)
+[devcontainer-identity-audit.sociobot.in/?demo=1#demo](https://devcontainer-identity-audit.sociobot.in/?demo=1#demo)
 
 ## Install
 

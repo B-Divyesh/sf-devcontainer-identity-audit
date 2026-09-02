@@ -332,7 +332,7 @@ test("every route exposes complete metadata and the standard shell", async ({ pa
     await expect(page.locator('meta[name="twitter:card"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
     await expect(page.locator("header nav")).toBeVisible();
-    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-2");
+    await expect(page.locator("footer")).toContainText("v0.1.0 · polish-3");
     await expect(page.locator("#route-status")).toHaveAttribute("aria-live", "polite");
   }
 });

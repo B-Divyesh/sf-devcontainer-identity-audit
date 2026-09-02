@@ -2,7 +2,7 @@
 name = "mount-identity-audit"
 version = "0.1.0"
 edition = "2024"
-description = "Read-only Dev Container and rootless Podman bind-mount identity preflight"
+description = "Read-only Dev Container and rootless Podman bind-mount permission check"
 license = "MIT"
 repository = "https://github.com/B-Divyesh/sf-devcontainer-identity-audit"
 readme = "README.md"

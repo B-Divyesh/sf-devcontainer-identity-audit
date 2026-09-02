@@ -109,7 +109,7 @@ Exit codes are stable:
   named-user resolution error).
 
 The process never runs `chown`, edits configuration, pulls an image, creates a
-container, or starts one. An audit makes at most three read-only runtime calls.
+container, or starts one. An audit makes at most four read-only runtime calls.
 Those calls use `info`, `image inspect`, or rootless Podman identity maps.
 
 ## Supported configuration and permission inputs

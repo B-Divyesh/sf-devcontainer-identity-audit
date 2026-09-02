@@ -151,8 +151,8 @@ test("CLI verdicts keep stable process exit codes @claim:permission-verdicts", (
   }
 });
 
-test("audit is read-only and caps runtime inspection @claim:read-only-safety", () => {
-  const root = project('{ remoteUser: "1000:1000" }');
+test("audit is read-only and measures the image-only runtime maximum @claim:read-only-safety", () => {
+  const root = project('{ image: "local/example:latest" }');
   const logRoot = mkdtempSync(join(tmpdir(), "mia-call-log-"));
   const log = join(logRoot, "runtime-calls.log");
   const runtime = join(root, "podman-recorder");
@@ -160,6 +160,7 @@ test("audit is read-only and caps runtime inspection @claim:read-only-safety", (
 printf '%s\\n' "$*" >> "$AUDIT_CALL_LOG"
 case "$1" in
   info) printf '%s\\n' '{"version":{"Version":"5.2.2"},"host":{"security":{"rootless":true}}}' ;;
+  image) printf '%s\\n' '"1000:1000"' ;;
   unshare) printf '%s\\n' '0 1000 1' '1 100000 65536' ;;
   *) exit 9 ;;
 esac
@@ -170,13 +171,20 @@ esac
   const calls = readFileSync(log, "utf8").trim().split("\n");
   rmSync(log);
   const after = snapshot(root);
-  expect([0, 1]).toContain(output.status);
+  expect(output.status).toBe(1);
+  const report = JSON.parse(output.stdout);
+  expect(report.verdict).toBe("fail");
+  expect(report.identity.container_uid).toBe(1000);
+  expect(report.identity.container_gid).toBe(1000);
+  expect(report.identity.host_uid).toBe(100999);
+  expect(report.identity.host_gid).toBe(100999);
   expect(calls).toEqual([
     "info --format json",
+    "image inspect local/example:latest --format {{json .Config.User}}",
     "unshare cat /proc/self/uid_map",
     "unshare cat /proc/self/gid_map"
   ]);
-  expect(calls.length).toBeLessThanOrEqual(3);
+  expect(calls.length).toBeLessThanOrEqual(4);
   expect(calls.join(" ")).not.toMatch(/\b(run|start|create|pull)\b/);
   expect(after).toEqual(before);
   rmSync(root, { recursive: true, force: true });

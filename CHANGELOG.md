@@ -2,6 +2,8 @@
 
 ## Unreleased — 2026-09-02
 
+- Correct the documented maximum to four read-only runtime calls for an
+  image-only rootless Podman audit, with an exact call-recording regression.
 - Return `UNKNOWN` when Docker reports daemon `userns-remap` instead of
   assuming container IDs map directly to the host.
 - Give read-only mounts a configuration-specific recovery step without

@@ -22,10 +22,10 @@
   },
   {
     "id": "read-only-safety",
-    "claim": "The audit changes no project files, starts no container, and makes at most three read-only runtime calls.",
+    "claim": "The audit changes no project files, starts no container, and makes at most four read-only runtime calls.",
     "where": "landing proof strip and README",
     "test": "npm run test:claims -- --grep @claim:read-only-safety",
-    "sandbox": "fresh project plus a recording rootless Podman adapter"
+    "sandbox": "fresh image-only project plus a recording rootless Podman adapter returning numeric image metadata and live UID/GID maps"
   },
   {
     "id": "config-support",

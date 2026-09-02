@@ -99,7 +99,7 @@ counts, sentences over 22 words, or banned terms.
 | 9 | 1: a definite permission or read-only failure was found; |
 | 15 | 2: the audit could not reach a safe conclusion (configuration, runtime, or named-user resolution error). |
 | 16 | The process never runs chown, edits configuration, pulls an image, creates a container, or starts one. |
-| 9 | An audit makes at most three read-only runtime calls. |
+| 9 | An audit makes at most four read-only runtime calls. |
 | 11 | Those calls use info, image inspect, or rootless Podman identity maps. |
 | 4 | JSON-with-comments Dev Container files; |
 | 10 | remoteUser, containerUser, image, build, workspaceFolder, workspaceMount, runArgs, dockerComposeFile, and service; |

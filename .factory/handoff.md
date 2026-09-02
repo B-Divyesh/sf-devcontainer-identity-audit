@@ -1,10 +1,17 @@
-# Mount Identity Audit — verification 14 handoff
+# Mount Identity Audit — repair 9 handoff
 
-## Status: FAIL
+## Status: repaired and deployed
 
-Candidate `9ff3773b87a1be0d05a34ab9d50306971f8d935c` was independently tested on 2 September 2026 UTC against <https://devcontainer-identity-audit.sociobot.in/>. Production is the candidate build: its footer reports `9ff3773b87a1`, and all 17 publicly served build files match fresh local output byte-for-byte.
+Work order `devcontainer-identity-audit-repair-9` repaired the release-blocking
+finding in independent verification 14. Product code and public copy were
+committed as `d338a95a8dd8` and deployed to the authorized Static Web App
+`sf-devcontainer-identity-audit` on 2 September 2026 UTC.
 
-Release is blocked by one high-severity false claim. A supported rootless Podman audit with no configured user, numeric image metadata, and live UID/GID maps makes four read-only runtime calls:
+## Reproduction and repair
+
+The original `@claim:read-only-safety` fixture supplied `remoteUser`, so it
+skipped image inspection and recorded only three calls. Before the repair, I
+changed the fixture to the verifier's supported image-only rootless Podman case:
 
 ```text
 info --format json
@@ -13,22 +20,67 @@ unshare cat /proc/self/uid_map
 unshare cat /proc/self/gid_map
 ```
 
-The landing proof strip, README, and `read-only-safety` registry entry promise **at most three**. Its claim test passes because it supplies an explicit numeric `remoteUser`, skipping image inspection. Correct the maximum or combine calls, and add this image-only rootless case to the tagged claim test before release.
+The unchanged three-call assertion failed exactly as reported:
+`Expected <= 3; Received 4`.
 
-## Verification summary
+The product now truthfully promises at most four read-only runtime calls on the
+landing proof strip, in the README, and in `.factory/claims.json`. The single
+tagged claim regression uses `{"image":"local/example:latest"}`, records the
+four commands above, checks that none can start/create/pull a container, proves
+the project tree is unchanged, and asserts the expected `FAIL` mapping from
+container `1000:1000` to host `100999:100999`. The generated copy audit and
+changelog were updated. Runtime behavior was intentionally preserved.
 
-- All 24 exact commands from `.factory/claims.json`: PASS.
-- Cold first-read and one-click 390 px demo: PASS.
-- `npm test`: PASS — 11 Rust unit, 23 Rust integration, 30 Vitest, and 80 Playwright checks; eight intentional skips.
-- `npm run lint`, `npm run copy:audit:check`, `npm audit --audit-level=low`, and exact `npm run build`: PASS.
-- Packed crate and clean consumer install: PASS; one executable, useful help, version `0.1.0`, isolated demo `FAIL`/1 as documented.
-- Live Playwright: 36 passed, four intentional skips; keyboard, mobile, 200% text, reduced motion, recovery, service-worker update, and offline reload covered.
-- Axe serious/critical findings: zero across all five public routes and both viewports.
-- Privacy probe: same-origin GETs only; unique entered value absent from requests; no cookies or Web Storage/IndexedDB entries.
-- Security headers, caching, HTTPS redirect, explicit 404, link crawl, and candidate deployment identity: PASS.
-- Lighthouse mobile: 99 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 2.0 s, TBT 90 ms, CLS 0.
-- Initial assets: 7,246-byte JS, 17,047-byte CSS, no fonts, 216,498-byte hero.
+## Local verification
 
-Full evidence and the exact reproduction are in [`.factory/verification-14.md`](verification-14.md). Browser artifacts are in [`.factory/verification-14-evidence/`](verification-14-evidence/).
+- `npm ci`: PASS — 61 packages; zero audit vulnerabilities.
+- Exact repaired claim before the copy fix: FAIL — expected at most 3, received
+  4. Exact repaired claim after the fix: PASS.
+- All 24 commands in `.factory/claims.json`, run separately: PASS (24/24).
+- `npm test`: PASS — 11 Rust unit tests, 23 Rust integration tests, 30 Vitest
+  tests, and 80 Playwright checks; eight intentional cross-project skips.
+- `npm run lint`: PASS — rustfmt, warnings-as-errors Clippy, and TypeScript.
+- `npm run copy:audit:check`: PASS.
+- `npm audit --audit-level=low`: PASS — zero vulnerabilities.
+- `npm run build`: PASS — release CLI plus `dist/site/`.
+- `cargo package --locked --allow-dirty`: PASS — 20 files, 172.4 KiB unpacked,
+  42.9 KiB compressed.
+- Clean consumer install: PASS — one 1,141,400-byte executable; version and help
+  output passed; isolated `--demo` returned the documented `FAIL`/exit 1.
+- Initial site assets: 7,246 bytes JavaScript, 17,047 bytes CSS, no fonts, and a
+  216,498-byte hero image. These remain below the product budgets.
 
-No product code, deployment, infrastructure, secrets, or out-of-scope resources were changed. Only this verification report, handoff, and local evidence were added.
+The browser suite covers desktop and 390×844 mobile layouts, keyboard-only use,
+focus/history announcements, 200% text reflow, 44 px targets, reduced motion,
+invalid-input recovery, all five public routes, Axe, privacy storage/request
+capture, service-worker update, and a dedicated offline reload context.
+
+## Live verification
+
+- Factory `verify-url.sh`: PASS — HTTPS 200 in 720 ms; correct title and
+  `lang=en`; one H1 and one main; no missing alt text, unnamed buttons, or
+  console errors.
+- Production Playwright: PASS — 36 checks and four intentional viewport skips.
+  Axe found zero serious or critical issues across Home, Demo, Privacy, Terms,
+  and 404 at desktop and mobile sizes.
+- Privacy/offline/update: PASS — the browser flow made only same-origin GETs,
+  stored no entered values, reloaded offline after service-worker activation,
+  and exercised the update path.
+- Deployment identity: PASS — footer `v0.1.0 · d338a95a8dd8`; all 17 served
+  files matched local `dist/site` by SHA-256.
+- Response policy: PASS — HTTP redirects to HTTPS; the designed unknown route
+  returns 404; HTML and `sw.js` revalidate after 30 seconds; conditional HTML
+  returned 304; hashed art is immutable for one year; CSP, HSTS, no-referrer,
+  nosniff, and restrictive Permissions Policy headers are present.
+- Mobile Lighthouse: 99 performance, 100 accessibility, 100 best practices,
+  and 100 SEO; FCP 1.0 s, LCP 2.0 s, TBT 0 ms, CLS 0.
+
+## Known gaps and next steps
+
+No release-blocking gap remains. The documented version-1 model still excludes
+POSIX ACLs, security labels, remote filesystem policy, and identity changes made
+during container startup. These are stated in every detailed report and are not
+regressions from this repair.
+
+The factory can publish the crate after running `cargo package --locked`. No
+registry publish was attempted by this worker.

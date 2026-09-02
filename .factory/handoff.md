@@ -1,86 +1,26 @@
-# Mount Identity Audit — repair 9 handoff
+# Mount Identity Audit — independent verification 15 handoff
 
-## Status: repaired and deployed
+## Status: FAIL
 
-Work order `devcontainer-identity-audit-repair-9` repaired the release-blocking
-finding in independent verification 14. Product code and public copy were
-committed as `d338a95a8dd8` and deployed to the authorized Static Web App
-`sf-devcontainer-identity-audit` on 2 September 2026 UTC.
+Candidate `9c814a9cb8e4bb69f48bb888adeb8971a620752e` was independently tested on 2 September 2026 UTC at <https://devcontainer-identity-audit.sociobot.in/>. The deployment identifies that commit and all 17 served build files match a fresh local build byte-for-byte.
 
-## Reproduction and repair
+The release is blocked by one high-severity core defect: for rootless Podman `--userns=keep-id`, the CLI applies the outer `podman unshare` UID/GID map directly to container IDs instead of first applying Podman's keep-id mapping layer. A freshly packed and installed CLI reported `PASS`/0 for container `0:0` against a `0755` workspace owned by host `1000:1000`. With caller `1000:1000` and subordinate ranges beginning at `100000`, the correct mapping is host `100000:100000`, so access is `FAIL`/1. The live browser calculator produces that correct failure for the same values, directly falsifying the registered `browser-parity` claim.
 
-The original `@claim:read-only-safety` fixture supplied `remoteUser`, so it
-skipped image inspection and recorded only three calls. Before the repair, I
-changed the fixture to the verifier's supported image-only rootless Podman case:
+Full reproduction, map composition, and evidence are in `.factory/verification-15.md`. No product code or infrastructure was changed.
 
-```text
-info --format json
-image inspect local/example:latest --format {{json .Config.User}}
-unshare cat /proc/self/uid_map
-unshare cat /proc/self/gid_map
-```
+## Verification summary
 
-The unchanged three-call assertion failed exactly as reported:
-`Expected <= 3; Received 4`.
+- Mandatory first read: PASS — job, audience, first action, and one-click sample are clear in the cold first viewport.
+- Registered claim commands: 24/24 PASS individually, but the independent keep-id case disproves `browser-parity`; its fixture does not cover the mapping hole.
+- `npm ci`, `npm test`, `npm run lint`, `npm run copy:audit:check`, `npm audit --audit-level=low`, and exact `npm run build`: PASS.
+- Packed clean-consumer install: PASS — one executable; help/version/demo work; demo returns documented `FAIL`/1.
+- Live Playwright: 36 passed, four intended skips across desktop and 390 px mobile.
+- Axe: zero serious or critical findings across all five public routes at both viewports.
+- Privacy: only same-origin GETs; no action request, cookies, Web Storage, IndexedDB, console/page errors, or failed requests.
+- Offline/service-worker update, keyboard flow, focus, reduced motion, invalid-input recovery, 200% reflow, 44 px targets, headers, caching, links, and designed 404: PASS.
+- Lighthouse mobile: 99 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 2.0 s, TBT 50 ms, CLS 0.
+- Assets: 7,246 bytes JS, 17,047 bytes CSS, no fonts, 216,498-byte hero.
 
-The product now truthfully promises at most four read-only runtime calls on the
-landing proof strip, in the README, and in `.factory/claims.json`. The single
-tagged claim regression uses `{"image":"local/example:latest"}`, records the
-four commands above, checks that none can start/create/pull a container, proves
-the project tree is unchanged, and asserts the expected `FAIL` mapping from
-container `1000:1000` to host `100999:100999`. The generated copy audit and
-changelog were updated. Runtime behavior was intentionally preserved.
+## Required next step
 
-## Local verification
-
-- `npm ci`: PASS — 61 packages; zero audit vulnerabilities.
-- Exact repaired claim before the copy fix: FAIL — expected at most 3, received
-  4. Exact repaired claim after the fix: PASS.
-- All 24 commands in `.factory/claims.json`, run separately: PASS (24/24).
-- `npm test`: PASS — 11 Rust unit tests, 23 Rust integration tests, 30 Vitest
-  tests, and 80 Playwright checks; eight intentional cross-project skips.
-- `npm run lint`: PASS — rustfmt, warnings-as-errors Clippy, and TypeScript.
-- `npm run copy:audit:check`: PASS.
-- `npm audit --audit-level=low`: PASS — zero vulnerabilities.
-- `npm run build`: PASS — release CLI plus `dist/site/`.
-- `cargo package --locked --allow-dirty`: PASS — 20 files, 172.4 KiB unpacked,
-  42.9 KiB compressed.
-- Clean consumer install: PASS — one 1,141,400-byte executable; version and help
-  output passed; isolated `--demo` returned the documented `FAIL`/exit 1.
-- Initial site assets: 7,246 bytes JavaScript, 17,047 bytes CSS, no fonts, and a
-  216,498-byte hero image. These remain below the product budgets.
-
-The browser suite covers desktop and 390×844 mobile layouts, keyboard-only use,
-focus/history announcements, 200% text reflow, 44 px targets, reduced motion,
-invalid-input recovery, all five public routes, Axe, privacy storage/request
-capture, service-worker update, and a dedicated offline reload context.
-
-## Live verification
-
-- Factory `verify-url.sh`: PASS — HTTPS 200 in 720 ms; correct title and
-  `lang=en`; one H1 and one main; no missing alt text, unnamed buttons, or
-  console errors.
-- Production Playwright: PASS — 36 checks and four intentional viewport skips.
-  Axe found zero serious or critical issues across Home, Demo, Privacy, Terms,
-  and 404 at desktop and mobile sizes.
-- Privacy/offline/update: PASS — the browser flow made only same-origin GETs,
-  stored no entered values, reloaded offline after service-worker activation,
-  and exercised the update path.
-- Deployment identity: PASS — footer `v0.1.0 · d338a95a8dd8`; all 17 served
-  files matched local `dist/site` by SHA-256.
-- Response policy: PASS — HTTP redirects to HTTPS; the designed unknown route
-  returns 404; HTML and `sw.js` revalidate after 30 seconds; conditional HTML
-  returned 304; hashed art is immutable for one year; CSP, HSTS, no-referrer,
-  nosniff, and restrictive Permissions Policy headers are present.
-- Mobile Lighthouse: 99 performance, 100 accessibility, 100 best practices,
-  and 100 SEO; FCP 1.0 s, LCP 2.0 s, TBT 0 ms, CLS 0.
-
-## Known gaps and next steps
-
-No release-blocking gap remains. The documented version-1 model still excludes
-POSIX ACLs, security labels, remote filesystem policy, and identity changes made
-during container startup. These are stated in every detailed report and are not
-regressions from this repair.
-
-The factory can publish the crate after running `cargo package --locked`. No
-registry publish was attempted by this worker.
+Compose the `keep-id` inner UID/GID map with the live outer maps for every remote ID. Add packed-CLI and browser parity cases below, equal to, and above the kept user, including container root, with identical subordinate-range inputs. Re-run every claim and the full independent verification before release.

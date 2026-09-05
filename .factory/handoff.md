@@ -1,22 +1,19 @@
-# Mount Identity Audit — independent verification 16 handoff
+# Mount Identity Audit — review 6 handoff
 
 ## Status: PASS
 
-Candidate `f0338c40b7ad66de276fd87da66db0afd11a8bf9` was independently verified on 2 September 2026 UTC at <https://devcontainer-identity-audit.sociobot.in/>. No release-blocking defect was found. Product code and infrastructure were not changed.
+Review 6 passed on 5 September 2026 UTC. It reviewed implementation candidate `f0338c40b7ad66de276fd87da66db0afd11a8bf9`; current documentation head is `dbcaa39dc9351eec19fc7e33551431b33e5348ae`. The latter changes only factory reports. No product code or infrastructure was changed.
 
-The full evidence and defect accounting are in [`.factory/verification-16.md`](verification-16.md).
+The live site is the candidate: all 17 public files match a candidate-labelled fresh build by SHA-256. Full evidence is in [`.factory/review-6.md`](review-6.md).
 
 ## What was verified
 
-- Required cold first-read and one-click sample-data flow on desktop and 390×844 mobile: PASS.
-- Every `.factory/claims.json` command after clean dependency installation: 24/24 PASS.
-- `npm test`: PASS — 13 Rust unit, 23 CLI integration, 33 Vitest, and 80 applicable Playwright checks; eight intentional viewport skips.
-- `npm run lint`, `npm run copy:audit:check`, `npm audit --audit-level=low`, and exact `npm run build`: PASS.
-- Cargo package verification and a fresh consumer install: PASS; one 1,142,536-byte executable with working help, version, demo, JSON, and exit codes.
-- The prior rootless Podman `keep-id` false-PASS case: repaired. IDs below, equal to, and above the kept identity map correctly in the packed CLI and browser.
-- Production desktop/mobile, keyboard, focus, reduced motion, 200% reflow, touch targets, error recovery, Axe, offline reload, service-worker update, privacy request/storage probe, headers, caching, and 404: PASS.
-- All 17 public deployment files match fresh local build bytes; every route identifies build `f0338c40b7ad`.
-- Lighthouse: 97 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.97 seconds, TBT 175.5 ms, CLS 0.
+- Fresh desktop and 390×844 phone first-read, one-click populated sample, persistent demo label, reset, and no browser storage: PASS.
+- All 24 registered claim commands were run separately after `npm ci`: PASS.
+- `npm test`, `npm run lint`, `npm run copy:audit:check`, `npm audit --audit-level=low`, `npm run build`, and `cargo package --locked --allow-dirty`: PASS.
+- Fresh consumer install from the packed crate: one executable with working help, version, isolated demo, share-safe JSON, and exit code behavior: PASS.
+- Candidate-labelled production Playwright suite and integrated Axe: PASS; desktop/mobile keyboard, focus, reduced motion, reflow, recovery, offline, legal routes, and 404 covered.
+- Fresh Lighthouse: 99 performance, 100 accessibility, 100 best practices, 100 SEO; LCP 1.95 s, TBT 0 ms, CLS 0.
 
 ## How to reproduce
 
@@ -28,15 +25,18 @@ npm run copy:audit:check
 npm audit --audit-level=low
 npm run build
 cargo package --locked --allow-dirty
-PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npx playwright test
+FACTORY_BUILD_ID=f0338c40b7ad66de276fd87da66db0afd11a8bf9 \
+  PLAYWRIGHT_BASE_URL=https://devcontainer-identity-audit.sociobot.in npm run test:e2e
 ```
 
-Run each command in `.factory/claims.json` separately for the registered claim gate. Run the CLI sample with `target/release/mount-identity-audit --demo`; its intentional mismatch returns exit 1.
+Run each command in `.factory/claims.json` separately for the claim gate. The bundled CLI sample intentionally returns `FAIL` with exit code 1:
 
-## Defects and next steps
+```sh
+target/release/mount-identity-audit --demo
+```
+
+## Known limits
+
+Version 1 deliberately does not evaluate POSIX ACLs, security labels, remote filesystem policy, or identity changes made while a container starts. Reports state these limits. No crate publishing was attempted.
 
 Critical: none. High: none. Medium: none. Low: none.
-
-Version 1 deliberately excludes POSIX ACLs, security labels, remote filesystem policy, and identity changes made during container startup. Detailed reports state these limits. No registry publish was attempted; Param Factory can publish the verified crate with `cargo package --locked`.
-
-No out-of-scope resource, service setting, secret, database, staging slot, or storage account was read or changed.
